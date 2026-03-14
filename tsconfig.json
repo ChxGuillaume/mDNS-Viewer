@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "#build/ui": [
+        "./node_modules/.nuxt-ui/ui"
+      ]
+    },
+    "target": "ESNext",
+    "moduleDetection": "force",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "src",
+    "env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "../../package/dist"
+  ]
+}
