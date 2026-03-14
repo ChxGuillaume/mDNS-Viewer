@@ -4,15 +4,26 @@ import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  root: resolve(__dirname, 'src/mainview'),
+  root: resolve(__dirname),
 
-  plugins: [vue(), ui()],
+  plugins: [
+    vue(),
+    ui({
+      autoImport: {
+        dts: resolve(__dirname, 'src/mainview/auto-imports.d.ts'),
+      },
+      components: {
+        dts: resolve(__dirname, 'src/mainview/components.d.ts'),
+      },
+    }),
+  ],
 
   build: {
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
 
     rollupOptions: {
+      input: resolve(__dirname, 'src/mainview/index.html'),
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

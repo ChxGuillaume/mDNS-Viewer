@@ -1,9 +1,7 @@
 import type { MyWebviewRPCType } from '../shared/types';
 import { Bonjour } from 'bonjour-service';
-import { ApplicationMenu, BrowserView, BrowserWindow, Updater } from 'electrobun/bun';
-
-const DEV_SERVER_PORT = 5173;
-const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
+import { ApplicationMenu, BrowserView, BrowserWindow } from 'electrobun/bun';
+import { getMainViewUrl } from './getMainViewUrl';
 
 ApplicationMenu.setApplicationMenu([
   {
@@ -25,25 +23,6 @@ ApplicationMenu.setApplicationMenu([
   },
 ]);
 
-async function getMainViewUrl(): Promise<string> {
-  const channel = await Updater.localInfo.channel();
-  if (channel === 'dev') {
-    try {
-      await fetch(DEV_SERVER_URL, { method: 'HEAD' });
-      console.log(`HMR enabled: Using Vite dev server at ${DEV_SERVER_URL}`);
-      return DEV_SERVER_URL;
-    }
-    catch {
-      console.log(
-        'Vite dev server not running. Run \'bun run dev:hmr\' for HMR support.',
-      );
-    }
-  }
-  return 'views://mainview/index.html';
-}
-
-const url = await getMainViewUrl();
-
 const myWebviewRPC = BrowserView.defineRPC<MyWebviewRPCType>({
   maxRequestTime: 5000,
   handlers: {},
@@ -51,7 +30,7 @@ const myWebviewRPC = BrowserView.defineRPC<MyWebviewRPCType>({
 
 const mainWindow = new BrowserWindow({
   title: 'mDNS Viewer',
-  url,
+  url: await getMainViewUrl(),
   frame: {
     width: 900,
     height: 700,

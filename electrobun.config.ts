@@ -9,7 +9,7 @@ export default {
   build: {
     // Vite builds to dist/, we copy from there
     copy: {
-      'dist/index.html': 'views/mainview/index.html',
+      'dist/src/mainview/index.html': 'views/mainview/index.html',
       'dist/assets': 'views/mainview/assets',
     },
     // Ignore Vite output in watch mode — HMR handles view rebuilds separately
@@ -21,6 +21,7 @@ export default {
     },
     linux: {
       bundleCEF: false,
+      icon: 'resources/icons/linux.png',
     },
     win: {
       bundleCEF: false,
