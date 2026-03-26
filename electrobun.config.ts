@@ -27,4 +27,7 @@ export default {
       bundleCEF: false,
     },
   },
+  release: {
+    baseUrl: 'https://github.com/ChxGuillaume/mDNS-Viewer/releases/latest/download',
+  },
 } satisfies ElectrobunConfig;

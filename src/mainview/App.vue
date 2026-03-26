@@ -43,11 +43,11 @@ const showByItems = ref([
     <UMain class="py-4">
       <UContainer>
         <UEmpty v-if="!Object.keys(servicesByKey).length" title="No services found" icon="i-heroicons-inbox-stack" />
-        <div class="space-y-4 md:columns-2 lg:columns-3">
+        <div class="gap-4 md:columns-2 lg:columns-3">
           <UCard
             v-for="[key, services] in servicesByKey"
             :key="key"
-            class=" break-inside-avoid"
+            class="break-inside-avoid"
             :ui="{ body: 'space-y-4' }"
           >
             <h2 class="truncate text-xl font-bold">
@@ -64,7 +64,5 @@ const showByItems = ref([
         </div>
       </UContainer>
     </UMain>
-
-    <UFooter />
   </UApp>
 </template>

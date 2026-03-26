@@ -3,7 +3,6 @@ import type { MyWebviewRPCType } from '../../shared/types';
 import { Electroview } from 'electrobun/view';
 import { groupBy } from 'lodash';
 import { computed, ref } from 'vue';
-import { devData } from '../assets/dev-data';
 
 const priorityOrder = ['http', 'https', 'smb'] as const;
 
@@ -37,7 +36,7 @@ const sortServicesFunction = createPriorityComparator<Service>(
 );
 
 export function useServices() {
-  const servicesMap = ref<Map<string, Service>>(new Map(devData as [string, Service][]));
+  const servicesMap = ref<Map<string, Service>>(new Map());
   const filter = ref({
     search: '',
     types: [] as string[],
@@ -58,7 +57,19 @@ export function useServices() {
   const services = computed(() => [...servicesMap.value.values()]);
 
   const filteredServices = computed(() => (
-    services.value.filter(service => service.name.toLowerCase().includes(filter.value.search.toLowerCase()))),
+    services.value.filter((service) => {
+      const name = service.name.toLowerCase();
+      const protocol = service.protocol.toLowerCase();
+      const type = service.type.toLowerCase();
+
+      const search = filter.value.search.toLowerCase();
+
+      return (
+        name.includes(search)
+        || protocol.includes(search)
+        || type.includes(search)
+      );
+    })),
   );
 
   const groupedServices = computed(() => groupBy(filteredServices.value, filter.value.showBy) as Record<string, Service[]>);

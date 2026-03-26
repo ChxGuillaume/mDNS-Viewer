@@ -1,0 +1,18 @@
+name: 'Determine Build Environment'
+description: 'Determines if build is canary or stable based on tag name'
+outputs:
+  env:
+    description: 'Build environment (canary or stable)'
+    value: ${{ steps.build-env.outputs.env }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine build environment
+      id: build-env
+      shell: bash
+      run: |
+        if [[ "${{ github.ref_name }}" == *"-canary"* ]]; then
+          echo "env=canary" >> $GITHUB_OUTPUT
+        else
+          echo "env=stable" >> $GITHUB_OUTPUT
+        fi

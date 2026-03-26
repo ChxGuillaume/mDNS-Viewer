@@ -1,7 +1,7 @@
 import { Updater } from 'electrobun';
 
 const DEV_SERVER_PORT = 5173;
-const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
+const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}/src/mainview/`;
 
 export async function getMainViewUrl(): Promise<string> {
   const channel = await Updater.localInfo.channel();
