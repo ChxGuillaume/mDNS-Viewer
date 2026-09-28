@@ -18,7 +18,7 @@ export const categories: Record<CategoryId, Category> = {
   files: { id: 'files', label: 'File sharing', icon: 'i-lucide-folder-tree', tile: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-300 ring-emerald-500/25', dot: 'bg-emerald-500' },
   remote: { id: 'remote', label: 'Remote access', icon: 'i-lucide-terminal', tile: 'bg-violet-500/12 text-violet-600 dark:text-violet-300 ring-violet-500/25', dot: 'bg-violet-500' },
   home: { id: 'home', label: 'Smart home', icon: 'i-lucide-house-wifi', tile: 'bg-orange-500/12 text-orange-600 dark:text-orange-300 ring-orange-500/25', dot: 'bg-orange-500' },
-  apple: { id: 'apple', label: 'Apple ecosystem', icon: 'i-lucide-laptop', tile: 'bg-slate-500/12 text-slate-600 dark:text-slate-300 ring-slate-500/25', dot: 'bg-slate-500' },
+  apple: { id: 'apple', label: 'Apple ecosystem', icon: 'i-simple-icons-apple', tile: 'bg-slate-500/12 text-slate-600 dark:text-slate-300 ring-slate-500/25', dot: 'bg-slate-500' },
   system: { id: 'system', label: 'System & network', icon: 'i-lucide-network', tile: 'bg-teal-500/12 text-teal-600 dark:text-teal-300 ring-teal-500/25', dot: 'bg-teal-500' },
   other: { id: 'other', label: 'Other', icon: 'i-lucide-radio-tower', tile: 'bg-zinc-500/12 text-zinc-600 dark:text-zinc-300 ring-zinc-500/25', dot: 'bg-zinc-400' },
 };
