@@ -9,7 +9,7 @@ const { copy } = useActions();
 <template>
   <button
     type="button"
-    class="group/copy -mx-1.5 flex max-w-[calc(100%+0.75rem)] min-w-0 items-start gap-1.5 rounded-md px-1.5 py-0.5 text-left transition-colors hover:bg-elevated"
+    class="group/copy -mx-1.5 inline-flex w-fit max-w-full min-w-0 self-start items-start gap-1.5 rounded-md px-1.5 py-0.5 text-left transition-colors hover:bg-elevated"
     :class="{ 'font-mono text-[0.8125rem]': mono }"
     :title="`Copy ${props.label ?? 'value'}`"
     @click="copy(props.value, props.label)"

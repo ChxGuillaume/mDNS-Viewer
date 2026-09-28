@@ -144,7 +144,9 @@ function formatDate(timestamp: number) {
               size="sm"
               class="shrink-0 font-mono"
             />
-            <CopyValue :value="address.ip" label="Address" mono wrap class="flex-1" />
+            <div class="min-w-0 flex-1">
+              <CopyValue :value="address.ip" label="Address" mono class="max-w-full" />
+            </div>
             <span v-if="address.linkLocal" class="shrink-0 text-xs text-dimmed">link-local</span>
             <UBadge v-for="iface in address.interfaces" :key="iface" :label="iface" color="neutral" variant="outline" size="sm" class="shrink-0 font-mono" />
           </li>
@@ -162,7 +164,7 @@ function formatDate(timestamp: number) {
             color="neutral"
             variant="ghost"
             class="-my-1 normal-case"
-            @click="copy(txtJson, 'TXT records')"
+            @click="copy(txtJson, 'TXT records', `JSON · ${service.txt.length} records`)"
           />
         </h3>
         <div v-if="service.txt.length" class="grid grid-cols-[minmax(3rem,max-content)_minmax(0,1fr)] overflow-hidden rounded-lg border border-default bg-muted/50">

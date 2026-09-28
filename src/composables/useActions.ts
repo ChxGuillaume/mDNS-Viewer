@@ -6,13 +6,13 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 export function useActions() {
   const toast = useToast();
 
-  async function copy(text: string, label = 'Value') {
+  async function copy(text: string, label = 'Value', description = text) {
     try {
       if (isTauri())
         await writeText(text);
       else
         await navigator.clipboard.writeText(text);
-      toast.add({ title: `${label} copied`, description: text, icon: 'i-lucide-clipboard-check', color: 'success', duration: 1800 });
+      toast.add({ title: `${label} copied`, description, icon: 'i-lucide-clipboard-check', color: 'success', duration: 1800 });
     }
     catch (e) {
       toast.add({ title: 'Copy failed', description: String(e), icon: 'i-lucide-circle-alert', color: 'error' });

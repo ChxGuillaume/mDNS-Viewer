@@ -16,7 +16,6 @@ const now = useNow();
 
 const service = computed(() => props.entry.service);
 const url = computed(() => serviceUrl(service.value));
-const primaryAddress = computed(() => service.value.addresses.find(address => !address.linkLocal) ?? service.value.addresses[0]);
 </script>
 
 <template>
@@ -35,7 +34,6 @@ const primaryAddress = computed(() => service.value.addresses.find(address => !a
     <span class="truncate text-muted">{{ entry.info.label }}</span>
     <span class="truncate font-mono text-xs text-muted">
       {{ shortHost(service.host) }}<span v-if="service.port" class="text-dimmed">:{{ service.port }}</span>
-      <span v-if="primaryAddress" class="ms-1.5 text-dimmed">{{ primaryAddress.ip }}</span>
     </span>
     <span class="flex items-center gap-1.5 text-xs text-dimmed">
       <StatusDot :online="service.online" />
