@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui';
 import type { CategoryId } from '@/lib/catalog';
 import { defineShortcuts } from '@nuxt/ui/composables';
 import { computed, ref } from 'vue';
@@ -16,29 +15,23 @@ const scanning = computed(() => now.value.getTime() - lastActivity.value < 4000 
 const status = computed(() => error.value ? 'Discovery error' : scanning.value ? 'Scanning…' : 'Listening');
 const statsSummary = computed(() => `${stats.value.online} online · ${stats.value.devices} devices · ${stats.value.types} types`);
 
-const items = computed<NavigationMenuItem[][]>(() => {
-  const total = [...categoryCounts.value.values()].reduce((sum, count) => sum + count, 0);
+interface NavItem {
+  id: CategoryId | 'all';
+  label: string;
+  icon: string;
+  count: number;
+}
 
-  const item = (id: CategoryId | 'all', label: string, icon: string, count: number): NavigationMenuItem => ({
-    label,
-    icon,
-    badge: { label: String(count), color: 'neutral', variant: 'subtle', size: 'sm' },
-    tooltip: { text: `${label} · ${count}`, content: { side: 'right', sideOffset: 10 } },
-    active: category.value === id,
-    onSelect: () => {
-      category.value = id;
-    },
-  });
+const allItem = computed<NavItem>(() => ({
+  id: 'all',
+  label: 'All services',
+  icon: 'i-lucide-layout-grid',
+  count: [...categoryCounts.value.values()].reduce((sum, count) => sum + count, 0),
+}));
 
-  const categoryItems = (Object.keys(categories) as CategoryId[])
-    .filter(id => categoryCounts.value.get(id))
-    .map(id => item(id, categories[id].label, categories[id].icon, categoryCounts.value.get(id)!));
-
-  return [
-    [item('all', 'All services', 'i-lucide-layout-grid', total)],
-    categoryItems.length ? [{ label: 'Categories', type: 'label' as const }, ...categoryItems] : [],
-  ];
-});
+const categoryItems = computed<NavItem[]>(() => (Object.keys(categories) as CategoryId[])
+  .filter(id => categoryCounts.value.get(id))
+  .map(id => ({ id, label: categories[id].label, icon: categories[id].icon, count: categoryCounts.value.get(id)! })));
 
 defineShortcuts({
   meta_b: () => {
@@ -64,7 +57,7 @@ defineShortcuts({
   >
     <template #header>
       <div data-tauri-drag-region class="flex w-full items-center gap-2.5" :class="{ 'justify-center': collapsed }">
-        <UTooltip :text="`mDNS Viewer · ${status}`" :disabled="!collapsed" :content="{ side: 'right', sideOffset: 10 }">
+        <UTooltip :text="`mDNS Viewer · ${status}`" :disabled="!collapsed" :content="{ side: 'right', sideOffset: 12 }">
           <span class="relative shrink-0">
             <img src="/logo.png" alt="mDNS Viewer" class="pointer-events-none size-8 rounded-lg shadow-sm" draggable="false">
             <span v-if="collapsed" class="absolute -right-0.5 -bottom-0.5 inline-flex size-2.5 rounded-full ring-2 ring-(--app-sidebar)">
@@ -88,33 +81,61 @@ defineShortcuts({
       </div>
     </template>
 
-    <UNavigationMenu
-      :items="items"
-      :collapsed="collapsed"
-      orientation="vertical"
-      :ui="{ link: 'py-1.5', linkLeadingIcon: 'size-4' }"
-    />
+    <nav class="flex flex-col gap-0.5" :class="{ 'items-center': collapsed }" aria-label="Categories">
+      <template v-for="(item, index) in [allItem, ...categoryItems]" :key="item.id">
+        <USeparator v-if="index === 1 && collapsed" class="my-2 w-6" />
+        <p v-else-if="index === 1" class="px-2.5 pt-4 pb-1.5 text-xs font-medium text-muted">
+          Categories
+        </p>
+
+        <UTooltip
+          :text="`${item.label} · ${item.count}`"
+          :disabled="!collapsed"
+          :content="{ side: 'right', sideOffset: 12 }"
+        >
+          <UButton
+            :icon="item.icon"
+            :label="collapsed ? undefined : item.label"
+            :aria-label="item.label"
+            :aria-current="category === item.id ? 'page' : undefined"
+            :square="collapsed"
+            :block="!collapsed"
+            :color="category === item.id ? 'primary' : 'neutral'"
+            :variant="category === item.id ? 'soft' : 'ghost'"
+            :class="collapsed ? 'size-9 justify-center' : 'justify-start'"
+            :ui="{ leadingIcon: 'size-4.5', label: 'flex-1 text-left truncate' }"
+            @click="category = item.id"
+          >
+            <template v-if="!collapsed" #trailing>
+              <UBadge :label="String(item.count)" color="neutral" variant="subtle" size="sm" class="font-mono" />
+            </template>
+          </UButton>
+        </UTooltip>
+      </template>
+    </nav>
 
     <template #footer>
       <template v-if="collapsed">
-        <UTooltip :text="statsSummary" :content="{ side: 'right', sideOffset: 10 }">
-          <div class="flex flex-col items-center rounded-md bg-elevated/60 py-1.5">
+        <UTooltip :text="statsSummary" :content="{ side: 'right', sideOffset: 12 }">
+          <div class="mx-auto flex w-11 flex-col items-center rounded-md bg-elevated/60 py-1.5">
             <span class="font-mono text-sm font-semibold text-highlighted">{{ stats.online }}</span>
             <span class="text-[0.625rem] text-muted">online</span>
           </div>
         </UTooltip>
         <div class="flex flex-col items-center gap-1">
-          <UTooltip :text="`Rescan network · started ${relativeTime(startedAt, now.getTime())}`" :kbds="['meta', 'R']" :content="{ side: 'right', sideOffset: 10 }">
-            <UButton icon="i-lucide-radar" color="neutral" variant="ghost" aria-label="Rescan network" @click="rescan" />
+          <UTooltip :text="`Rescan network · started ${relativeTime(startedAt, now.getTime())}`" :kbds="['meta', 'R']" :content="{ side: 'right', sideOffset: 12 }">
+            <UButton icon="i-lucide-radar" color="neutral" variant="ghost" square class="size-9 justify-center" aria-label="Rescan network" @click="rescan" />
           </UTooltip>
-          <UTooltip text="Toggle theme" :content="{ side: 'right', sideOffset: 10 }">
-            <UColorModeButton />
+          <UTooltip text="Toggle theme" :content="{ side: 'right', sideOffset: 12 }">
+            <UColorModeButton square class="size-9 justify-center" />
           </UTooltip>
-          <UTooltip text="Expand sidebar" :kbds="['meta', 'B']" :content="{ side: 'right', sideOffset: 10 }">
+          <UTooltip text="Expand sidebar" :kbds="['meta', 'B']" :content="{ side: 'right', sideOffset: 12 }">
             <UButton
               icon="i-lucide-panel-left-open"
               color="neutral"
               variant="ghost"
+              square
+              class="size-9 justify-center"
               aria-label="Expand sidebar"
               @click="collapsed = false"
             />
