@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import { relativeTime, useNow } from '@/composables/useNow';
 import { useServiceBrowser } from '@/composables/useServiceBrowser';
 import { categories } from '@/lib/catalog';
+import ThemeSwitcher from './ThemeSwitcher.vue';
 
 const { category, categoryCounts, stats, startedAt, lastActivity, rescan, error } = useServiceBrowser();
 const now = useNow();
@@ -127,9 +128,7 @@ defineShortcuts({
           <UTooltip :text="`Rescan network · started ${relativeTime(startedAt, now.getTime())}`" :kbds="['meta', 'R']" :content="{ side: 'right', sideOffset: 12 }">
             <UButton icon="i-lucide-radar" color="neutral" variant="ghost" square class="size-9 justify-center" aria-label="Rescan network" @click="rescan" />
           </UTooltip>
-          <UTooltip text="Toggle theme" :content="{ side: 'right', sideOffset: 12 }">
-            <UColorModeButton square class="size-9 justify-center" />
-          </UTooltip>
+          <ThemeSwitcher side="right" square class="size-9 justify-center" />
           <UTooltip text="Expand sidebar" :kbds="['meta', 'B']" :content="{ side: 'right', sideOffset: 12 }">
             <UButton
               icon="i-lucide-panel-left-open"
@@ -161,7 +160,7 @@ defineShortcuts({
             <UButton icon="i-lucide-radar" label="Rescan" color="neutral" variant="soft" size="sm" @click="rescan" />
           </UTooltip>
           <span class="flex-1" />
-          <UColorModeButton size="sm" />
+          <ThemeSwitcher size="sm" />
           <UTooltip text="Collapse sidebar" :kbds="['meta', 'B']">
             <UButton
               icon="i-lucide-panel-left-close"
