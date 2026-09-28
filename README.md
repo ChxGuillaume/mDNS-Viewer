@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/resources/icons/icon.iconset/icon-128.png" width="128" alt="mDNS Viewer Logo"></img>
+  <img src="/resources/icons/logo.svg" width="128" alt="mDNS Viewer Logo"></img>
 </p>
 
 <p align="center">

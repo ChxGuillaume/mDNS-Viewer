@@ -59,7 +59,7 @@ defineShortcuts({
       <div data-tauri-drag-region class="flex w-full items-center gap-2.5" :class="{ 'justify-center': collapsed }">
         <UTooltip :text="`mDNS Viewer · ${status}`" :disabled="!collapsed" :content="{ side: 'right', sideOffset: 12 }">
           <span class="relative shrink-0">
-            <img src="/logo.png" alt="mDNS Viewer" class="pointer-events-none size-8 rounded-lg shadow-sm" draggable="false">
+            <img src="/logo.svg" alt="mDNS Viewer" class="pointer-events-none size-8 drop-shadow-sm" draggable="false">
             <span v-if="collapsed" class="absolute -right-0.5 -bottom-0.5 inline-flex size-2.5 rounded-full ring-2 ring-(--app-sidebar)">
               <span v-if="scanning" class="absolute inset-0 animate-ping-slow rounded-full bg-primary" />
               <span class="relative size-2.5 rounded-full" :class="error ? 'bg-error' : 'bg-primary'" />
