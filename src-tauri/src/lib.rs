@@ -1,4 +1,6 @@
 mod discovery;
+#[cfg(target_os = "macos")]
+mod menu;
 
 use discovery::{Discovery, Snapshot};
 use tauri::{Manager, RunEvent, State};
@@ -15,7 +17,11 @@ fn rescan(discovery: State<'_, Discovery>) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "macos")]
+    let builder = builder.menu(menu::build);
+
+    let app = builder
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
