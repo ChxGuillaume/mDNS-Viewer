@@ -1,0 +1,110 @@
+name: Mac App Store
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to build (e.g. v2.1.0)
+        type: string
+        required: true
+    secrets:
+      APPLE_TEAM_ID:
+        required: true
+      APPSTORE_APP_CERTIFICATE:
+        required: true
+      APPSTORE_INSTALLER_CERTIFICATE:
+        required: true
+      APPSTORE_CERTIFICATE_PASSWORD:
+        required: true
+      APPSTORE_APP_SIGNING_IDENTITY:
+        required: true
+      APPSTORE_INSTALLER_SIGNING_IDENTITY:
+        required: true
+      APPSTORE_PROVISIONING_PROFILE:
+        required: true
+      APPLE_API_KEY_ID:
+        required: true
+      APPLE_API_ISSUER:
+        required: true
+      APPLE_API_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build (e.g. v2.1.0)
+        type: string
+        required: true
+
+jobs:
+  submit:
+    runs-on: macos-latest
+    env:
+      APP_NAME: mDNS Viewer
+      BUNDLE_DIR: src-tauri/target/universal-apple-darwin/release/bundle/macos
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: ./.github/actions/setup
+        with:
+          rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          cache-key: mac-app-store
+
+      - name: Import signing certificates
+        env:
+          APP_CERTIFICATE: ${{ secrets.APPSTORE_APP_CERTIFICATE }}
+          INSTALLER_CERTIFICATE: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/appstore.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          for name in APP INSTALLER; do
+            var="${name}_CERTIFICATE"
+            echo "${!var}" | base64 --decode > "$RUNNER_TEMP/$name.p12"
+            security import "$RUNNER_TEMP/$name.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+            rm "$RUNNER_TEMP/$name.p12"
+          done
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user | xargs security list-keychains -d user -s "$KEYCHAIN"
+
+      - name: Prepare App Store bundle files
+        env:
+          PROVISIONING_PROFILE: ${{ secrets.APPSTORE_PROVISIONING_PROFILE }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "$PROVISIONING_PROFILE" | base64 --decode > src-tauri/embedded.provisionprofile
+          sed -i '' "s/__TEAM_ID__/$TEAM_ID/g" src-tauri/Entitlements.appstore.plist
+
+      - name: Build app bundle
+        uses: tauri-apps/tauri-action@v1
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPSTORE_APP_SIGNING_IDENTITY }}
+        with:
+          tauriScript: bun run tauri
+          args: --target universal-apple-darwin --bundles app --config src-tauri/tauri.appstore.conf.json
+
+      - name: Build installer package
+        env:
+          INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPSTORE_INSTALLER_SIGNING_IDENTITY }}
+        run: |
+          xcrun productbuild \
+            --sign "$INSTALLER_SIGNING_IDENTITY" \
+            --component "$BUNDLE_DIR/$APP_NAME.app" /Applications \
+            "$RUNNER_TEMP/$APP_NAME.pkg"
+
+      - name: Upload to App Store Connect
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APPLE_API_KEY" > "$HOME/.appstoreconnect/private_keys/AuthKey_$APPLE_API_KEY_ID.p8"
+          xcrun altool --upload-app --type macos \
+            --file "$RUNNER_TEMP/$APP_NAME.pkg" \
+            --apiKey "$APPLE_API_KEY_ID" \
+            --apiIssuer "$APPLE_API_ISSUER"

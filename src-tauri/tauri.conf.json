@@ -33,6 +33,7 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
+    "publisher": "Guillaume Chx",
     "shortDescription": "Browse mDNS / DNS-SD services on your network",
     "license": "GPL-3.0-only",
     "icon": [
