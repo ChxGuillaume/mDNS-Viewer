@@ -7,6 +7,18 @@ import { useDiscovery } from './useDiscovery';
 
 export type GroupBy = 'device' | 'type' | 'ipv4' | 'ipv6' | 'none';
 export type ViewMode = 'grid' | 'list';
+export type FilterKind = 'host' | 'ip' | 'type';
+
+export interface FilterTag {
+  id: string;
+  kind: FilterKind;
+  value: string;
+  label: string;
+  description?: string;
+  icon: string;
+  tile: string;
+  ui: { tagsItem: string };
+}
 
 export interface ServiceEntry {
   service: ServiceRecord;
@@ -24,6 +36,7 @@ export interface ServiceGroup {
 }
 
 const search = ref('');
+const filterTags = ref<FilterTag[]>([]);
 const category = ref<CategoryId | 'all'>('all');
 const groupBy = useLocalStorage<GroupBy>('mdns:group-by', 'device');
 const view = useLocalStorage<ViewMode>('mdns:view', 'grid');
@@ -52,6 +65,31 @@ function matches(entry: ServiceEntry, terms: string[]) {
   return terms.every(term => haystack.includes(term));
 }
 
+const filterStyles: Record<Exclude<FilterKind, 'type'>, { icon: string; tile: string }> = {
+  host: { icon: 'i-lucide-server', tile: 'bg-indigo-500/12 text-indigo-600 dark:text-indigo-300 ring-indigo-500/25' },
+  ip: { icon: 'i-lucide-network', tile: 'bg-pink-500/12 text-pink-600 dark:text-pink-300 ring-pink-500/25' },
+};
+
+function makeTag(kind: FilterKind, value: string, label: string, description: string, icon: string, tile: string): FilterTag {
+  return { id: `${kind}:${value}`, kind, value, label, description, icon, tile, ui: { tagsItem: tile } };
+}
+
+function entryValues(entry: ServiceEntry, kind: FilterKind) {
+  if (kind === 'host')
+    return [entry.service.host.toLowerCase()];
+  if (kind === 'ip')
+    return entry.service.addresses.map(address => address.ip);
+  return [entry.service.serviceType];
+}
+
+function matchesTags(entry: ServiceEntry, tags: FilterTag[]) {
+  const kinds = new Set(tags.map(tag => tag.kind));
+  return [...kinds].every((kind) => {
+    const values = entryValues(entry, kind);
+    return tags.some(tag => tag.kind === kind && values.includes(tag.value));
+  });
+}
+
 export function useServiceBrowser() {
   const discovery = useDiscovery();
   const debouncedSearch = refDebounced(search, 80);
@@ -74,8 +112,29 @@ export function useServiceBrowser() {
     const terms = debouncedSearch.value.toLowerCase().split(/\s+/).filter(Boolean);
     return visibleEntries.value.filter(entry =>
       (category.value === 'all' || entry.info.category.id === category.value)
-      && (!terms.length || matches(entry, terms)),
+      && (!terms.length || matches(entry, terms))
+      && (!filterTags.value.length || matchesTags(entry, filterTags.value)),
     );
+  });
+
+  const filterOptions = computed(() => {
+    const options: Record<FilterKind, Map<string, FilterTag>> = { host: new Map(), ip: new Map(), type: new Map() };
+    for (const { service, info } of visibleEntries.value) {
+      const host = service.host.toLowerCase();
+      if (!options.host.has(host))
+        options.host.set(host, makeTag('host', host, shortHost(service.host), service.host, filterStyles.host.icon, filterStyles.host.tile));
+      for (const address of service.addresses) {
+        if (!options.ip.has(address.ip))
+          options.ip.set(address.ip, makeTag('ip', address.ip, address.ip, shortHost(service.host), filterStyles.ip.icon, filterStyles.ip.tile));
+      }
+      if (!options.type.has(service.serviceType))
+        options.type.set(service.serviceType, makeTag('type', service.serviceType, info.label, service.serviceType.replace(/\.local\.$/, ''), info.icon, info.category.tile));
+    }
+    return {
+      host: [...options.host.values()].sort((a, b) => collator.compare(a.label, b.label)),
+      ip: [...options.ip.values()].sort((a, b) => collator.compare(a.label, b.label)),
+      type: [...options.type.values()].sort((a, b) => collator.compare(a.label, b.label)),
+    };
   });
 
   const groups = computed<ServiceGroup[]>(() => {
@@ -156,6 +215,8 @@ export function useServiceBrowser() {
   return {
     ...discovery,
     search,
+    filterTags,
+    filterOptions,
     category,
     groupBy,
     view,

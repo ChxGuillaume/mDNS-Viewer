@@ -6,6 +6,7 @@ import { computed, useTemplateRef } from 'vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import ResizeSeparator from '@/components/ResizeSeparator.vue';
 import ScanRadar from '@/components/ScanRadar.vue';
+import SearchFilter from '@/components/SearchFilter.vue';
 import ServiceCard from '@/components/ServiceCard.vue';
 import ServiceDetails from '@/components/ServiceDetails.vue';
 import ServiceIcon from '@/components/ServiceIcon.vue';
@@ -18,6 +19,8 @@ void useTitlebarInset();
 
 const {
   search,
+  filterTags,
+  filterOptions,
   category,
   groupBy,
   view,
@@ -65,13 +68,14 @@ function toggle(id: string) {
 
 function resetFilters() {
   search.value = '';
+  filterTags.value = [];
   category.value = 'all';
   showOffline.value = true;
 }
 
 defineShortcuts({
-  meta_k: () => searchInput.value?.inputRef?.focus(),
-  meta_f: () => searchInput.value?.inputRef?.focus(),
+  meta_k: () => searchInput.value?.focus(),
+  meta_f: () => searchInput.value?.focus(),
   meta_r: () => rescan(),
   meta_1: () => { view.value = 'grid'; },
   meta_2: () => { view.value = 'list'; },
@@ -82,6 +86,8 @@ defineShortcuts({
         selectedId.value = undefined;
       else if (search.value)
         search.value = '';
+      else if (filterTags.value.length)
+        filterTags.value = [];
     },
   },
 });
@@ -105,32 +111,13 @@ defineShortcuts({
             </template>
 
             <template #right>
-              <UInput
+              <SearchFilter
                 ref="searchInput"
-                v-model="search"
-                icon="i-lucide-search"
-                placeholder="Search name, host, IP, TXT…"
-                size="sm"
-                class="w-40 md:w-64 xl:w-80"
-                autocomplete="off"
-                spellcheck="false"
-                :ui="{ trailing: 'pe-1.5' }"
-              >
-                <template #trailing>
-                  <UButton
-                    v-if="search"
-                    icon="i-lucide-x"
-                    color="neutral"
-                    variant="link"
-                    size="xs"
-                    aria-label="Clear search"
-                    @click="search = ''"
-                  />
-                  <UKbd v-else value="meta" size="sm" class="hidden md:inline-flex">
-                    ⌘K
-                  </UKbd>
-                </template>
-              </UInput>
+                v-model:search="search"
+                v-model:tags="filterTags"
+                :options="filterOptions"
+                class="w-64 md:w-[28rem] xl:w-[36rem]"
+              />
             </template>
           </UDashboardNavbar>
 
@@ -190,7 +177,7 @@ defineShortcuts({
             v-else-if="noMatches"
             icon="i-lucide-search-x"
             title="Nothing matches your filters"
-            :description="search ? `No service matches “${search}”.` : 'Try another category or show offline services.'"
+            :description="search || filterTags.length ? 'No service matches your search and filters.' : 'Try another category or show offline services.'"
             :actions="[{ label: 'Clear filters', icon: 'i-lucide-filter-x', color: 'neutral', variant: 'soft', onClick: resetFilters }]"
             class="m-auto"
           />
