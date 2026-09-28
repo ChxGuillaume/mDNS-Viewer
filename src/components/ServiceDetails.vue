@@ -2,7 +2,7 @@
 import type { ServiceEntry } from '@/composables/useServiceBrowser';
 import { computed } from 'vue';
 import { useActions } from '@/composables/useActions';
-import { relativeTime, useNow } from '@/composables/useNow';
+import { useRelativeTime } from '@/composables/useNow';
 import { useServiceBrowser } from '@/composables/useServiceBrowser';
 import { isBrowserUrl, serviceUrl, sshCommand } from '@/lib/catalog';
 import CopyValue from './CopyValue.vue';
@@ -14,11 +14,12 @@ const emit = defineEmits<{ select: [id: string] }>();
 
 const { copy, open } = useActions();
 const { filteredEntries } = useServiceBrowser();
-const now = useNow();
 
 const service = computed(() => props.entry.service);
 const url = computed(() => serviceUrl(service.value));
 const ssh = computed(() => sshCommand(service.value));
+const firstSeen = useRelativeTime(() => service.value.firstSeen);
+const lastSeen = useRelativeTime(() => service.value.lastSeen);
 
 const ipUrl = computed(() => {
   const address = service.value.addresses.find(a => a.family === 'ipv4' && !a.linkLocal);
@@ -221,7 +222,7 @@ function formatDate(timestamp: number) {
               First seen
             </dt>
             <dd class="truncate font-mono text-highlighted" :title="formatDate(service.firstSeen)">
-              {{ relativeTime(service.firstSeen, now.getTime()) }}
+              {{ firstSeen }}
             </dd>
           </div>
           <div class="min-w-0 rounded-lg border border-default px-3 py-2">
@@ -229,7 +230,7 @@ function formatDate(timestamp: number) {
               {{ service.online ? 'Last update' : 'Went offline' }}
             </dt>
             <dd class="truncate font-mono text-highlighted" :title="formatDate(service.lastSeen)">
-              {{ relativeTime(service.lastSeen, now.getTime()) }}
+              {{ lastSeen }}
             </dd>
           </div>
           <div class="min-w-0 rounded-lg border border-default px-3 py-2">

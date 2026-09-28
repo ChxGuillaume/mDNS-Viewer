@@ -2,7 +2,7 @@
 import type { ServiceEntry } from '@/composables/useServiceBrowser';
 import { computed } from 'vue';
 import { useActions } from '@/composables/useActions';
-import { relativeTime, useNow } from '@/composables/useNow';
+import { useRelativeTime } from '@/composables/useNow';
 import { shortHost } from '@/composables/useServiceBrowser';
 import { isBrowserUrl, serviceUrl } from '@/lib/catalog';
 import ServiceIcon from './ServiceIcon.vue';
@@ -12,10 +12,10 @@ const props = defineProps<{ entry: ServiceEntry; selected?: boolean }>();
 defineEmits<{ select: [] }>();
 
 const { open } = useActions();
-const now = useNow();
 
 const service = computed(() => props.entry.service);
 const url = computed(() => serviceUrl(service.value));
+const firstSeen = useRelativeTime(() => service.value.firstSeen);
 </script>
 
 <template>
@@ -37,7 +37,7 @@ const url = computed(() => serviceUrl(service.value));
     </span>
     <span class="flex items-center gap-1.5 text-xs text-dimmed">
       <StatusDot :online="service.online" />
-      {{ service.online ? relativeTime(service.firstSeen, now.getTime()) : 'offline' }}
+      {{ service.online ? firstSeen : 'offline' }}
     </span>
     <UButton
       v-if="url && isBrowserUrl(url)"

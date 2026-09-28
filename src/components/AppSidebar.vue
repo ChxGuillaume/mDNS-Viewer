@@ -2,7 +2,7 @@
 import type { CategoryId } from '@/lib/catalog';
 import { defineShortcuts } from '@nuxt/ui/composables';
 import { computed, ref } from 'vue';
-import { relativeTime, useNow } from '@/composables/useNow';
+import { useNow, useRelativeTime } from '@/composables/useNow';
 import { useServiceBrowser } from '@/composables/useServiceBrowser';
 import { categories } from '@/lib/catalog';
 import ThemeSwitcher from './ThemeSwitcher.vue';
@@ -11,6 +11,7 @@ const { category, categoryCounts, stats, startedAt, lastActivity, rescan, error 
 const now = useNow();
 
 const collapsed = ref(false);
+const started = useRelativeTime(startedAt);
 
 const scanning = computed(() => now.value.getTime() - lastActivity.value < 4000 || now.value.getTime() - startedAt.value < 6000);
 const status = computed(() => error.value ? 'Discovery error' : scanning.value ? 'Scanning…' : 'Listening');
@@ -125,7 +126,7 @@ defineShortcuts({
           </div>
         </UTooltip>
         <div class="flex flex-col items-center gap-1">
-          <UTooltip :text="`Rescan network · started ${relativeTime(startedAt, now.getTime())}`" :kbds="['meta', 'R']" :content="{ side: 'right', sideOffset: 12 }">
+          <UTooltip :text="`Rescan network · started ${started}`" :kbds="['meta', 'R']" :content="{ side: 'right', sideOffset: 12 }">
             <UButton icon="i-lucide-radar" color="neutral" variant="ghost" square class="size-9 justify-center" aria-label="Rescan network" @click="rescan" />
           </UTooltip>
           <ThemeSwitcher side="right" square class="size-9 justify-center" />
@@ -156,7 +157,7 @@ defineShortcuts({
         </div>
 
         <div class="flex items-center gap-1">
-          <UTooltip :text="`Rescan network · started ${relativeTime(startedAt, now.getTime())}`" :kbds="['meta', 'R']">
+          <UTooltip :text="`Rescan network · started ${started}`" :kbds="['meta', 'R']">
             <UButton icon="i-lucide-radar" label="Rescan" color="neutral" variant="soft" size="sm" @click="rescan" />
           </UTooltip>
           <span class="flex-1" />

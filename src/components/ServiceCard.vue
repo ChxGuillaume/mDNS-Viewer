@@ -2,7 +2,7 @@
 import type { ServiceEntry } from '@/composables/useServiceBrowser';
 import { computed } from 'vue';
 import { useActions } from '@/composables/useActions';
-import { relativeTime, useNow } from '@/composables/useNow';
+import { useNow, useRelativeTime } from '@/composables/useNow';
 import { shortHost } from '@/composables/useServiceBrowser';
 import { isBrowserUrl, serviceUrl } from '@/lib/catalog';
 import ServiceIcon from './ServiceIcon.vue';
@@ -17,6 +17,7 @@ const now = useNow();
 const service = computed(() => props.entry.service);
 const url = computed(() => serviceUrl(service.value));
 const isFresh = computed(() => now.value.getTime() - service.value.firstSeen < 15_000);
+const firstSeen = useRelativeTime(() => service.value.firstSeen);
 </script>
 
 <template>
@@ -60,7 +61,7 @@ const isFresh = computed(() => now.value.getTime() - service.value.firstSeen < 1
         <template v-if="showHost">{{ shortHost(service.host) }}</template><span v-if="service.port" class="text-dimmed">:{{ service.port }}</span>
       </span>
       <span class="ms-auto shrink-0 text-dimmed">
-        {{ service.online ? relativeTime(service.firstSeen, now.getTime()) : 'offline' }}
+        {{ service.online ? firstSeen : 'offline' }}
       </span>
     </div>
   </div>
