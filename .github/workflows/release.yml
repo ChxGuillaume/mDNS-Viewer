@@ -130,7 +130,7 @@ jobs:
     secrets: inherit
 
   microsoft-store:
-    needs: [create-release, publish-release]
+    needs: create-release
     if: needs.create-release.outputs.env == 'stable' && vars.MS_STORE_ENABLED == 'true'
     uses: ./.github/workflows/microsoft-store.yml
     with:

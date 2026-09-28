@@ -63,3 +63,19 @@ jobs:
           tauriScript: bun run tauri
           args: ${{ matrix.args }}
           uploadWorkflowArtifacts: true
+
+      - name: Package MSIX
+        if: runner.os == 'Windows'
+        id: msix
+        uses: ./.github/actions/package-msix
+        with:
+          identity-name: ${{ vars.MSIX_IDENTITY_NAME || 'dev.guillaumechx.mdns-viewer' }}
+          publisher: ${{ vars.MSIX_PUBLISHER || 'CN=Guillaume Chx' }}
+          publisher-display-name: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME || 'Guillaume Chx' }}
+
+      - name: Upload MSIX artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: msix
+          path: ${{ steps.msix.outputs.path }}

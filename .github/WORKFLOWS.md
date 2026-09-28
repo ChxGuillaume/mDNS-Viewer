@@ -9,9 +9,10 @@ GitHub Actions setup for building mDNS Viewer and publishing it to GitHub Releas
 | `workflows/ci.yml` | push to `main`, pull requests, manual | Lint, typecheck, and a build on every platform (no publishing) |
 | `workflows/release.yml` | push of a `v*` tag | Creates the GitHub release, builds and uploads installers, then calls the store workflows |
 | `workflows/mac-app-store.yml` | called by `release.yml`, or manual | Builds a sandboxed universal `.app`, packages it as a signed `.pkg`, uploads it to App Store Connect |
-| `workflows/microsoft-store.yml` | called by `release.yml`, or manual | Builds an offline NSIS installer, attaches it to the release, submits it to Partner Center |
+| `workflows/microsoft-store.yml` | called by `release.yml`, or manual | Builds an MSIX package and uploads it to Partner Center |
 | `actions/setup` | composite action | Linux system deps, Bun, Rust (+ targets), Rust cache, `bun install` |
 | `actions/determine-build-env` | composite action | Outputs `canary` if the tag contains `-canary`, otherwise `stable` |
+| `actions/package-msix` | composite action | Wraps the compiled Windows `.exe` into an `.msix` with the Windows SDK's `MakeAppx` |
 
 Builds use [`tauri-apps/tauri-action@v1`](https://github.com/tauri-apps/tauri-action). It only handles building and GitHub Releases, so the store uploads use Apple's `xcrun` tools and the [Microsoft Store Developer CLI](https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/overview) (`msstore`).
 
@@ -25,11 +26,13 @@ Runs on every PR and every push to `main`. Concurrent runs on the same ref cance
    | Runner | Output |
    | --- | --- |
    | `macos-latest` | universal `.app` / `.dmg` (Apple Silicon + Intel) |
-   | `windows-latest` | NSIS `.exe` and `.msi` (x64) |
+   | `windows-latest` | NSIS `.exe`, `.msi` and an unsigned `.msix` (x64) |
    | `ubuntu-22.04` | `.deb`, `.rpm`, `.AppImage` (x64) |
    | `ubuntu-22.04-arm` | `.deb`, `.rpm`, `.AppImage` (arm64) |
 
    The bundles are attached to the run as workflow artifacts. CI builds aren't signed.
+
+   The MSIX uses the `MSIX_*` repository variables if they're set, and placeholder values otherwise. It's there to catch packaging errors on every PR, not to be installed. See [Testing the MSIX locally](#testing-the-msix-locally).
 
 CI needs no secrets.
 
@@ -58,7 +61,7 @@ Jobs:
 
 3. **publish-release**: once **every** build has succeeded, publishes the draft. If any build fails, the release stays a draft, so nobody sees a half-populated release. Fix the problem, re-run the failed jobs, and it gets published.
 4. **mac-app-store**: calls `mac-app-store.yml`. It runs in parallel with `build`.
-5. **microsoft-store**: calls `microsoft-store.yml` after `publish-release`. The Store downloads the installer from its public URL, so the release must be published first.
+5. **microsoft-store**: calls `microsoft-store.yml`. It runs in parallel with `build`, and it doesn't touch the GitHub release.
 
 ### Release assets
 
@@ -71,7 +74,6 @@ For a `v2.1.0` tag, the release should contain roughly these files. GitHub repla
 | Windows x64 | `mDNS.Viewer_2.1.0_x64-setup.exe` (NSIS), `mDNS.Viewer_2.1.0_x64_en-US.msi` |
 | Linux x64 | `.deb`, `.rpm` and `.AppImage` (`amd64` / `x86_64`) |
 | Linux arm64 | `.deb`, `.rpm` and `.AppImage` (`arm64` / `aarch64`) |
-| Microsoft Store job | `mDNS-Viewer_2.1.0_x64_store-setup.exe` (offline WebView2 installer, only when the Store job runs) |
 
 The exact file names come from Tauri's bundler. Check the first real release against this table.
 
@@ -173,24 +175,34 @@ To find the exact identity names, run `security find-identity -v` on your Mac af
 
 ### What it does
 
-Tauri doesn't produce MSIX packages, so the app is listed as an **MSI/EXE (Win32) app**. For that kind of app, the Store downloads the installer from a URL you provide, instead of you uploading a file.
+Tauri's bundler can't produce MSIX (it only makes `msi` and `nsis` on Windows), so the workflow builds the package itself:
 
-1. Builds an NSIS installer with `tauri.microsoftstore.conf.json` merged in. This bundles the **WebView2 offline installer**, as the Store requires, so the installer is roughly 150 MB larger than the regular one.
-2. Uploads it to the GitHub release as `mDNS-Viewer_<version>_x64_store-setup.exe`. It sits next to the regular installer, so the GitHub download stays small.
-3. Authenticates `msstore` with an Entra ID app registration.
-4. Replaces the submission's package with the new installer URL. The installer runs silently with `/S`. The workflow then commits (publishes) the submission, which sends it to certification.
+1. `bun run tauri build --no-bundle` compiles `mDNS Viewer.exe` without making any installers.
+2. The `package-msix` action puts together a folder with the `.exe` (renamed `mdns-viewer.exe`), the Store logos from `src-tauri/icons/` and `AppxManifest.xml`. It fills the manifest template with the version from `package.json` (as `X.Y.Z.0`) and the package identity from the `MSIX_*` variables, then runs `MakeAppx.exe pack`. The Windows SDK is already on `windows-latest`.
+3. Attaches the `.msix` to the workflow run as the `msix-store` artifact.
+4. Authenticates `msstore` with an Entra ID app registration.
+5. `msstore publish <file>.msix -id <product id>` uploads the package, creates a submission and commits it. Microsoft then certifies it.
+
+The package is **not signed**, and it doesn't need to be. The Store re-signs MSIX packages with a Microsoft certificate after certification, so what users install is trusted and doesn't trigger a SmartScreen warning. Nothing is added to the GitHub release.
 
 ### One-time setup (Microsoft side)
 
 1. **Developer account**: [register](https://learn.microsoft.com/windows/apps/get-started/sign-up) in Partner Center (individual accounts are free).
-2. **Reserve the app**: in *Partner Center → Apps and games → New product → **MSI or EXE app***, reserve the name. Copy the **Product ID** (a GUID) from *Product identity*.
-3. **First submission by hand**: fill in the listing, pricing, age rating, etc. Add a package with the installer URL of an existing release and installer parameters `/S`, then submit. The workflow only updates the package on later submissions.
-4. **API access**:
+2. **Reserve the app**: in *Partner Center → Apps and games → New product*, choose **MSIX or PWA app** (not "MSI or EXE app") and reserve the name.
+3. **Copy the identity values**: in *Product management → Product identity*, copy these:
+   - **Store ID**, e.g. `9NXXXXXXXXXX`, as the `MS_STORE_PRODUCT_ID` secret
+   - **Package/Identity/Name** as the `MSIX_IDENTITY_NAME` variable
+   - **Package/Identity/Publisher** (`CN=…`) as `MSIX_PUBLISHER`
+   - **Package/Properties/PublisherDisplayName** as `MSIX_PUBLISHER_DISPLAY_NAME`
+
+   The package is rejected if these don't match exactly.
+4. **First submission by hand**: Microsoft's API can only update an app that's already published. Set the `MSIX_*` variables, run *Actions → Microsoft Store → Run workflow* with a tag and **publish** unticked, download the `msix-store` artifact from the run, then create the first submission in Partner Center with it. Fill in the listing, screenshots, pricing and age rating. The package declares `runFullTrust`, which is normal for desktop apps. Partner Center asks you to justify it; something like "desktop app that needs direct access to the local network for mDNS discovery" is enough.
+5. **API access**:
    - In Partner Center → *Account settings → User management → Microsoft Entra applications*, link or create an Entra ID app and give it the **Manager** role.
    - In Azure Portal → *App registrations → that app → Certificates & secrets*, create a **client secret**.
    - Note the **Tenant ID** and **Client ID** (Overview). Note the **Seller ID** (Partner Center → *Account settings → Legal info → Developer*).
 
-### Secrets
+### Secrets and variables
 
 | Secret | Value |
 | --- | --- |
@@ -198,30 +210,52 @@ Tauri doesn't produce MSIX packages, so the app is listed as an **MSI/EXE (Win32
 | `PARTNER_CENTER_SELLER_ID` | Partner Center seller ID |
 | `PARTNER_CENTER_CLIENT_ID` | Entra app (client) ID |
 | `PARTNER_CENTER_CLIENT_SECRET` | Entra app client secret. It expires, so note the date and rotate it |
-| `MS_STORE_PRODUCT_ID` | Product ID (GUID) of the MSI/EXE app |
+| `MS_STORE_PRODUCT_ID` | Store ID of the app (`9N…`) |
 
-Variable: `MS_STORE_ENABLED=true`.
+| Variable | Value |
+| --- | --- |
+| `MSIX_IDENTITY_NAME` | Package/Identity/Name |
+| `MSIX_PUBLISHER` | Package/Identity/Publisher (`CN=…`) |
+| `MSIX_PUBLISHER_DISPLAY_NAME` | Package/Properties/PublisherDisplayName |
+| `MS_STORE_ENABLED` | `true` to publish on stable tags |
+
+The identity values aren't secret, which is why they're variables. They also let CI build an MSIX that matches the Store listing.
 
 ### Related files
 
 | File | Purpose |
 | --- | --- |
-| `src-tauri/tauri.microsoftstore.conf.json` | Sets `webviewInstallMode` to `offlineInstaller` |
-| `src-tauri/tauri.conf.json` → `bundle.publisher` | Must differ from the product name (Store rule) |
+| `src-tauri/msix/AppxManifest.xml` | Package manifest template. The `{{…}}` placeholders are filled in by `actions/package-msix` |
+| `src-tauri/icons/StoreLogo.png`, `Square44x44Logo.png`, `Square71x71Logo.png`, `Square150x150Logo.png` | Store and Start menu logos, generated by `tauri icon` |
+
+The manifest:
+- declares a full-trust desktop app (`runFullTrust`, `packagedClassicApp`)
+- requires Windows 10 2004 (build 19041) or later
+- adds a Windows Firewall rule allowing inbound UDP 5353, so mDNS responses aren't blocked and users don't get a firewall prompt
 
 ### Things to know
 
-- **Code signing is required, and not set up yet.** Store policy requires the installer and the app executable of Win32 apps to be signed with a certificate from a trusted CA. Unsigned submissions will likely fail certification. Tauri supports signing with a custom `bundle.windows.signCommand`, for example [Azure Trusted Signing](https://v2.tauri.app/distribute/sign/windows/#azure-trusted-signing) (cheap for individuals) or a classic OV/EV certificate. Add that config and its secrets before enabling the Store job.
-- **The installer URL must not change.** Partner Center downloads the file during certification and may download it again later. Don't delete or replace release assets that have been submitted. The repo must stay public, because GitHub release URLs redirect to a CDN and must be reachable without auth.
-- **One submission at a time.** If a submission is still in certification, `msstore submission update` fails. Wait for it to finish, or cancel it in Partner Center.
-- **Package JSON**: the fields sent (`packageUrl`, `languages`, `architectures`, `isSilentInstall`, `installerParameters`, `packageType`) follow Microsoft's MSI/EXE submission API. If the call is rejected, run `msstore submission get <productId>` locally to see the structure your product expects.
-- **x64 only.** To add Windows arm64, build with `--target aarch64-pc-windows-msvc`, upload that installer too, and add a second entry to `packages` with `architectures: ['Arm64']`.
+- **The manifest is maintained by hand.** Anything the app would need declared at the Windows level goes in `AppxManifest.xml` yourself: file associations, a URL protocol, start at login, extra files next to the `.exe`. Tauri's MSI/NSIS config doesn't apply to it. Today the app is a single self-contained `.exe`, so there's nothing else to copy.
+- **WebView2 isn't bundled.** An MSIX can't run the WebView2 installer, so the app relies on the WebView2 runtime that's built into Windows 11 and kept updated on Windows 10. That covers practically every supported machine.
+- **App data is redirected.** Packaged apps have their `%APPDATA%` writes transparently redirected to a per-package folder. Window state and logs keep working, but they aren't shared with an installed NSIS/MSI copy of the app.
+- **Versions must increase.** Each submission needs a higher version than the last. The fourth part is always `0`, as the Store requires.
+- **One submission at a time.** If a submission is still in certification, `msstore publish` fails. Wait for it to finish, or cancel it in Partner Center.
+- **Icons are basic.** The taskbar icon is shown on a coloured "plate". For the modern transparent look, add `Square44x44Logo.targetsize-*_altform-unplated.png` variants and generate a `resources.pri` with `MakePri.exe`.
+- **x64 only.** For arm64, build with `--target aarch64-pc-windows-msvc`, package a second MSIX with `ProcessorArchitecture="arm64"`, and combine both into an `.msixbundle` with `MakeAppx bundle`.
+
+### Testing the MSIX locally
+
+Windows only installs signed MSIX files, so to try the package on your machine:
+
+- **Developer Mode** (*Settings → System → For developers*): extract the `.msix` (it's a zip) and run `Add-AppxPackage -Register .\AppxManifest.xml` in the extracted folder.
+- **Or sign a local copy** with a self-signed certificate whose subject matches the manifest's `Publisher`, then trust that certificate and double-click the `.msix`.
+
+Never ship a self-signed package. The Store build is signed by Microsoft.
 
 ## Running the store workflows manually
 
-Both store workflows also have a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed submission without cutting a new release: *Actions → Mac App Store / Microsoft Store → Run workflow*, then enter an existing tag such as `v2.1.0`.
+Both store workflows also have a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed submission without cutting a new release: *Actions → Mac App Store / Microsoft Store → Run workflow*, then enter an existing tag such as `v2.1.0`. The Microsoft Store one also has a **publish** checkbox. Untick it to only build the MSIX artifact.
 
-- The Microsoft Store workflow needs the GitHub release for that tag to already exist.
 - The App Store workflow can't re-upload a version that App Store Connect already has.
 
 ## Upgrading actions
@@ -233,6 +267,7 @@ Both store workflows also have a `workflow_dispatch` trigger with a `tag` input.
 | `oven-sh/setup-bun` | `v2` |
 | `dtolnay/rust-toolchain` | `stable` |
 | `swatinem/rust-cache` | `v2` |
+| `actions/upload-artifact` | `v7` |
 | `microsoft/microsoft-store-apppublisher` | `v1.4` |
 
 To check changes to the workflows locally, run [`actionlint`](https://github.com/rhysd/actionlint) (`brew install actionlint`) from the repository root.
