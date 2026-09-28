@@ -46,6 +46,8 @@ const title = computed(() => category.value === 'all' ? 'All services' : categor
 const groupByItems: { label: string; value: GroupBy; icon: string }[] = [
   { label: 'Device', value: 'device', icon: 'i-lucide-server' },
   { label: 'Service type', value: 'type', icon: 'i-lucide-shapes' },
+  { label: 'IPv4 address', value: 'ipv4', icon: 'i-lucide-network' },
+  { label: 'IPv6 address', value: 'ipv6', icon: 'i-lucide-globe-2' },
   { label: 'No grouping', value: 'none', icon: 'i-lucide-rows-3' },
 ];
 

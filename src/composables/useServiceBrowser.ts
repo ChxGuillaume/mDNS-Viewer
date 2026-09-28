@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import { categories, describeType } from '@/lib/catalog';
 import { useDiscovery } from './useDiscovery';
 
-export type GroupBy = 'device' | 'type' | 'none';
+export type GroupBy = 'device' | 'type' | 'ipv4' | 'ipv6' | 'none';
 export type ViewMode = 'grid' | 'list';
 
 export interface ServiceEntry {
@@ -81,14 +81,20 @@ export function useServiceBrowser() {
   const groups = computed<ServiceGroup[]>(() => {
     const buckets = new Map<string, ServiceEntry[]>();
     for (const entry of filteredEntries.value) {
-      const key = groupBy.value === 'device'
-        ? entry.service.host.toLowerCase()
-        : groupBy.value === 'type' ? entry.service.serviceType : 'all';
-      const bucket = buckets.get(key);
-      if (bucket)
-        bucket.push(entry);
-      else
-        buckets.set(key, [entry]);
+      const addressFamily = groupBy.value === 'ipv4' ? 'ipv4' : groupBy.value === 'ipv6' ? 'ipv6' : undefined;
+      const keys = addressFamily
+        ? [...new Set(entry.service.addresses.filter(address => address.family === addressFamily).map(address => address.ip))]
+        : [groupBy.value === 'device'
+            ? entry.service.host.toLowerCase()
+            : groupBy.value === 'type' ? entry.service.serviceType : 'all'];
+      const fallbackKey = addressFamily === 'ipv4' ? 'No IPv4 address' : 'No IPv6 address';
+      for (const key of (keys.length ? keys : [fallbackKey])) {
+        const bucket = buckets.get(key);
+        if (bucket)
+          bucket.push(entry);
+        else
+          buckets.set(key, [entry]);
+      }
     }
 
     const result = [...buckets.entries()].map(([key, items]): ServiceGroup => {
@@ -115,6 +121,16 @@ export function useServiceBrowser() {
           subtitle: first.service.serviceType.replace(/\.local\.$/, ''),
           icon: first.info.icon,
           tile: first.info.category.tile,
+          entries: items,
+          online,
+        };
+      }
+      if (groupBy.value === 'ipv4' || groupBy.value === 'ipv6') {
+        return {
+          key,
+          title: key,
+          icon: groupBy.value === 'ipv4' ? 'i-lucide-network' : 'i-lucide-globe-2',
+          tile: categories.other.tile,
           entries: items,
           online,
         };
