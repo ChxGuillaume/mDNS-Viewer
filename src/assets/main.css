@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@source '../';
+
+@custom-variant mac (&:where(.is-mac, .is-mac *));
+
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, monospace;
+
+  --animate-ping-slow: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-sweep: sweep 3.2s linear infinite;
+  --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes ping-slow {
+    0% {
+      transform: scale(0.6);
+      opacity: 0.7;
+    }
+    80%,
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+
+  @keyframes sweep {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.985);
+    }
+  }
+}
+
+:root {
+  --ui-radius: 0.5rem;
+  --ui-header-height: 3.5rem;
+  --ui-bg: var(--color-white);
+  --ui-bg-muted: var(--color-zinc-50);
+  --ui-bg-elevated: var(--color-zinc-100);
+  --ui-border: color-mix(in oklab, var(--color-zinc-200) 80%, transparent);
+  --app-sidebar: var(--color-zinc-50);
+  --app-canvas: color-mix(in oklab, var(--color-zinc-50) 55%, white);
+  --app-grid: color-mix(in oklab, var(--color-zinc-300) 45%, transparent);
+}
+
+.dark {
+  --ui-bg: var(--color-zinc-950);
+  --ui-bg-muted: color-mix(in oklab, var(--color-zinc-900) 70%, var(--color-zinc-950));
+  --ui-bg-elevated: var(--color-zinc-900);
+  --ui-border: color-mix(in oklab, var(--color-zinc-800) 80%, transparent);
+  --app-sidebar: color-mix(in oklab, var(--color-zinc-900) 55%, var(--color-zinc-950));
+  --app-canvas: var(--color-zinc-950);
+  --app-grid: color-mix(in oklab, var(--color-zinc-700) 25%, transparent);
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+input,
+textarea,
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.app-canvas {
+  background-color: var(--app-canvas);
+  background-image: radial-gradient(var(--app-grid) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--ui-text-dimmed) 40%, transparent) transparent;
+}

@@ -1,11 +1,11 @@
-name: 'Determine Build Environment'
-description: 'Determines if build is canary or stable based on tag name'
+name: Determine Build Environment
+description: Determines if build is canary or stable based on tag name
 outputs:
   env:
-    description: 'Build environment (canary or stable)'
+    description: Build environment (canary or stable)
     value: ${{ steps.build-env.outputs.env }}
 runs:
-  using: 'composite'
+  using: composite
   steps:
     - name: Determine build environment
       id: build-env

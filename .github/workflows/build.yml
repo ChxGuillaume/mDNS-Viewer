@@ -5,21 +5,30 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
             platform: macos-arm64
-          - os: macos-15-intel
+            args: --target aarch64-apple-darwin
+          - os: macos-latest
             platform: macos-x64
+            args: --target x86_64-apple-darwin
           - os: windows-latest
             platform: windows
+            args: ''
           - os: ubuntu-24.04-arm
             platform: linux-arm
-          - os: ubuntu-latest
+            args: ''
+          - os: ubuntu-24.04
             platform: linux-x64
+            args: ''
 
     runs-on: ${{ matrix.os }}
 
@@ -27,63 +36,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-x64' && 'x86_64-apple-darwin' || matrix.platform == 'macos-arm64' && 'aarch64-apple-darwin' || '' }}
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.platform }}
+
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Determine build environment
         id: build-env
         uses: ./.github/actions/determine-build-env
 
-      - name: Build app
-        env:
-          ELECTROBUN_DEVELOPER_ID: ${{ secrets.ELECTROBUN_DEVELOPER_ID }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        shell: bash
-        run: |
-          if [ "${{ steps.build-env.outputs.env }}" = "canary" ]; then
-            bun run build:canary
-          else
-            bun run build:stable
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: artifacts-${{ matrix.platform }}
-          path: artifacts/*
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: artifacts-*
-          merge-multiple: true
-
-      - name: Determine build environment
-        id: build-env
-        uses: ./.github/actions/determine-build-env
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: artifacts/*
-          draft: false
-          prerelease: ${{ steps.build-env.outputs.env == 'canary' }}
-          generate_release_notes: true
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: mDNS Viewer ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: ${{ steps.build-env.outputs.env == 'canary' }}
+          generateReleaseNotes: true
+          tauriScript: bun run tauri
+          args: ${{ matrix.args }}

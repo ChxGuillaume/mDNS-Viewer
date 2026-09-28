@@ -1,32 +1,27 @@
 {
   "compilerOptions": {
-    "paths": {
-      "#build/ui/*": [
-        "./node_modules/.nuxt-ui/ui/*"
-      ]
-    },
     "target": "ESNext",
+    "jsx": "preserve",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "moduleDetection": "force",
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"],
+      "#build/ui/*": ["./node_modules/.nuxt-ui/ui/*"]
+    },
     "resolveJsonModule": true,
+    "types": ["vite/client"],
     "allowJs": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noEmit": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "skipLibCheck": true
   },
-  "include": [
-    "src",
-    "env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "../../package/dist"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.vue", "env.d.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri"]
 }
