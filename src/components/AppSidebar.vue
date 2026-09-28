@@ -47,22 +47,23 @@ defineShortcuts({
     collapsible
     :resizable="false"
     :default-size="248"
-    :collapsed-size="72"
+    :collapsed-size="80"
     :ui="{
       root: 'flex bg-(--app-sidebar) transition-[width] duration-200 ease-out',
-      header: 'mac:pt-7 h-auto py-3',
+      header: 'h-auto py-3 titlebar:pt-(--ui-header-height) in-data-[collapsed=true]:px-3',
       body: 'in-data-[collapsed=true]:px-3',
       footer: 'flex-col items-stretch gap-3 border-t border-default py-3 in-data-[collapsed=true]:px-3',
     }"
   >
     <template #header>
+      <div data-tauri-drag-region class="absolute inset-x-0 top-0 hidden h-(--ui-header-height) titlebar:block" />
       <div data-tauri-drag-region class="flex w-full items-center gap-2.5" :class="{ 'justify-center': collapsed }">
         <UTooltip :text="`mDNS Viewer · ${status}`" :disabled="!collapsed" :content="{ side: 'right', sideOffset: 12 }">
           <span class="relative shrink-0">
             <img src="/logo.svg" alt="mDNS Viewer" class="pointer-events-none size-8 drop-shadow-sm" draggable="false">
-            <span v-if="collapsed" class="absolute -right-0.5 -bottom-0.5 inline-flex size-2.5 rounded-full ring-2 ring-(--app-sidebar)">
+            <span v-if="collapsed" class="absolute -right-0.5 -bottom-0.5 inline-flex size-2 rounded-full ring-2 ring-(--app-sidebar)">
               <span v-if="scanning" class="absolute inset-0 animate-ping-slow rounded-full bg-primary" />
-              <span class="relative size-2.5 rounded-full" :class="error ? 'bg-error' : 'bg-primary'" />
+              <span class="relative size-2 rounded-full" :class="error ? 'bg-error' : 'bg-primary'" />
             </span>
           </span>
         </UTooltip>

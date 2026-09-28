@@ -11,10 +11,10 @@ import ServiceDetails from '@/components/ServiceDetails.vue';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 import ServiceRow from '@/components/ServiceRow.vue';
 import { useServiceBrowser } from '@/composables/useServiceBrowser';
+import { useTitlebarInset } from '@/composables/useTitlebarInset';
 import { categories } from '@/lib/catalog';
 
-if (/Mac/.test(navigator.userAgent))
-  document.documentElement.classList.add('is-mac');
+void useTitlebarInset();
 
 const {
   search,

@@ -5,7 +5,7 @@
 
 @source '../';
 
-@custom-variant mac (&:where(.is-mac, .is-mac *));
+@custom-variant titlebar (&:where(.titlebar-inset, .titlebar-inset *));
 
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
