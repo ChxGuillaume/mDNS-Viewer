@@ -19,6 +19,7 @@ export interface ServiceRecord {
   protocol: string;
   domain: string;
   subtype: string | null;
+  subtypeDomain: string | null;
   host: string;
   port: number;
   addresses: ServiceAddress[];

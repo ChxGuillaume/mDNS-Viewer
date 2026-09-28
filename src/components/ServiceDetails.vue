@@ -33,7 +33,13 @@ const connection = computed(() => [
   { label: 'Host', value: service.value.host },
   { label: 'Port', value: String(service.value.port) },
   { label: 'Type', value: service.value.serviceType },
-  { label: 'Subtype', value: service.value.subtype ?? undefined },
+  {
+    label: service.value.type === 'matter' && /^I[0-9A-F]{16}$/i.test(service.value.subtype ?? '')
+      ? 'Matter fabric ID'
+      : 'Subtype',
+    value: service.value.subtype ?? undefined,
+  },
+  { label: 'Subtype domain', value: service.value.subtypeDomain ?? undefined },
   { label: 'Full name', value: service.value.id },
 ].filter((row): row is { label: string; value: string } => !!row.value));
 
@@ -118,9 +124,9 @@ function formatDate(timestamp: number) {
         <h3 class="text-xs font-medium tracking-wide text-dimmed uppercase">
           Connection
         </h3>
-        <dl class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+        <dl class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
           <template v-for="row in connection" :key="row.label">
-            <dt class="py-0.5 text-muted">
+            <dt class="py-0.5 whitespace-nowrap text-muted">
               {{ row.label }}
             </dt>
             <dd class="min-w-0">

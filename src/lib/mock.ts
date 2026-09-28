@@ -51,6 +51,7 @@ function record(seed: Seed, index: number): ServiceRecord {
     protocol: 'tcp',
     domain: 'local',
     subtype: null,
+    subtypeDomain: null,
     host,
     port,
     addresses: [

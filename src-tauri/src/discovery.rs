@@ -73,6 +73,7 @@ pub struct ServiceRecord {
     pub protocol: String,
     pub domain: String,
     pub subtype: Option<String>,
+    pub subtype_domain: Option<String>,
     pub host: String,
     pub port: u16,
     pub addresses: Vec<Address>,
@@ -88,6 +89,7 @@ impl ServiceRecord {
         self.host == other.host
             && self.port == other.port
             && self.subtype == other.subtype
+            && self.subtype_domain == other.subtype_domain
             && self.addresses == other.addresses
             && self.txt == other.txt
     }
@@ -366,11 +368,31 @@ fn normalize_type(ty: &str) -> String {
 }
 
 fn is_browsable(ty: &str) -> bool {
-    ty.starts_with('_') && (ty.ends_with("._tcp.local.") || ty.ends_with("._udp.local."))
+    if !ty.starts_with('_') {
+        return false;
+    }
+
+    let is_service_type = |name: &str| {
+        name.starts_with('_') && (name.ends_with("._tcp.local.") || name.ends_with("._udp.local."))
+    };
+
+    if let Some((subtype, service_type)) = ty.split_once("._sub.") {
+        // DNS-SD subtypes are queried as `<subtype>._sub.<service type>`.
+        // Keep them as browse targets while resolved records retain the base type.
+        return subtype.len() > 1 && !subtype[1..].contains('.') && is_service_type(service_type);
+    }
+
+    is_service_type(ty)
 }
 
 fn to_record(service: &ResolvedService, now: u64) -> ServiceRecord {
-    let ty_domain = &service.ty_domain;
+    // A subtype browse can resolve a service with the queried subtype as its
+    // ty_domain (for example `_I..._sub._matter._tcp.local.`). Store and
+    // classify it by the parent service type instead.
+    let (queried_subtype, ty_domain) = match service.ty_domain.split_once("._sub.") {
+        Some((subtype, parent_type)) => (Some(subtype), parent_type),
+        None => (None, service.ty_domain.as_str()),
+    };
     let mut labels = ty_domain.trim_end_matches('.').splitn(3, '.');
     let kind = labels
         .next()
@@ -386,15 +408,18 @@ fn to_record(service: &ResolvedService, now: u64) -> ServiceRecord {
 
     let name = service
         .fullname
-        .strip_suffix(ty_domain.as_str())
+        .strip_suffix(ty_domain)
         .unwrap_or(&service.fullname)
         .trim_end_matches('.');
 
-    let subtype = service.sub_ty_domain.as_ref().and_then(|sub| {
-        sub.split("._sub.")
-            .next()
-            .map(|s| s.trim_start_matches('_').to_string())
-    });
+    let subtype_domain = service
+        .sub_ty_domain
+        .clone()
+        .or_else(|| queried_subtype.map(|sub| format!("{sub}._sub.{ty_domain}")));
+    let subtype = subtype_domain
+        .as_deref()
+        .and_then(|sub| sub.split("._sub.").next())
+        .map(|s| s.trim_start_matches('_').to_string());
 
     let mut addresses: Vec<Address> = service
         .addresses
@@ -434,11 +459,12 @@ fn to_record(service: &ResolvedService, now: u64) -> ServiceRecord {
     ServiceRecord {
         id: service.fullname.clone(),
         name: unescape_dns(name),
-        service_type: ty_domain.clone(),
+        service_type: ty_domain.to_string(),
         kind,
         protocol,
         domain,
         subtype,
+        subtype_domain,
         host: service.host.trim_end_matches('.').to_string(),
         port: service.port,
         addresses,
