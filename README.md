@@ -39,6 +39,7 @@ bun app:build
 - Vue 3, [Nuxt UI 4](https://ui.nuxt.com) and Tailwind CSS 4, built with Vite
 
 ## License
+
 [![https://img.shields.io/github/license/ChxGuillaume/mDNS-Viewer?color=green&label=License](https://img.shields.io/github/license/ChxGuillaume/mDNS-Viewer?color=green&label=License)](https://www.tldrlegal.com/license/gnu-general-public-license-v3-gpl-3)
 
 [GPL-3.0 License](LICENSE)

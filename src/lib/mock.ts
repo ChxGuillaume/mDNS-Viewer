@@ -29,6 +29,13 @@ const seeds: Seed[] = [
   ['esp-garage', 'esphomelib', 'esp-garage.local', 6053, '192.168.1.150', { version: '2026.9.0', platform: 'ESP32', board: 'esp32dev' }],
   ['Mosquitto', 'mqtt', 'pi5.local', 1883, '192.168.1.42'],
   ['Dev server', 'http', 'Guillaumes-MacBook-Pro.local', 5173, '192.168.1.12', { path: '/' }],
+  ['Samsung Q90 Series (65) Living Room Television With An Unreasonably Long Name', 'airplay', 'Samsung-Q90-Series-65-Living-Room-Television.local', 7000, '192.168.1.66', {
+    deviceid: 'A4:30:7A:1F:88:02',
+    features: '0x7F8AD0,0x38BCB46,0x1C340405D4A00,0x2A0B0000,0x2000000000000000,0x7FFFFFFF',
+    pk: 'b07727d6f6cd6e08b58ede525ec3cdeaa252ad9f683feb212ef8a205246554e7a4f1b9c2d3e8f7a6b5c4d3e2f1a0b9c8d7e6f5',
+    very_long_txt_record_key_name_that_goes_on: 'short',
+    manufacturer: 'Samsung',
+  }],
 ];
 
 let timers: ReturnType<typeof setTimeout>[] = [];

@@ -53,7 +53,7 @@ function formatDate(timestamp: number) {
     <header class="flex items-start gap-4 border-b border-default px-5 pt-5 pb-4">
       <ServiceIcon :icon="entry.info.icon" :tile="entry.info.category.tile" size="lg" />
       <div class="min-w-0 flex-1 space-y-1">
-        <h2 class="truncate text-base font-semibold text-highlighted selectable" :title="service.name">
+        <h2 class="line-clamp-2 text-base leading-snug font-semibold break-words text-highlighted selectable" :title="service.name">
           {{ service.name }}
         </h2>
         <div class="flex flex-wrap items-center gap-1.5">
@@ -124,7 +124,7 @@ function formatDate(timestamp: number) {
               {{ row.label }}
             </dt>
             <dd class="min-w-0">
-              <CopyValue :value="row.value" :label="row.label" mono />
+              <CopyValue :value="row.value" :label="row.label" mono wrap />
             </dd>
           </template>
         </dl>
@@ -144,7 +144,7 @@ function formatDate(timestamp: number) {
               size="sm"
               class="shrink-0 font-mono"
             />
-            <CopyValue :value="address.ip" label="Address" mono class="flex-1" />
+            <CopyValue :value="address.ip" label="Address" mono wrap class="flex-1" />
             <span v-if="address.linkLocal" class="shrink-0 text-xs text-dimmed">link-local</span>
             <UBadge v-for="iface in address.interfaces" :key="iface" :label="iface" color="neutral" variant="outline" size="sm" class="shrink-0 font-mono" />
           </li>
@@ -165,15 +165,15 @@ function formatDate(timestamp: number) {
             @click="copy(txtJson, 'TXT records')"
           />
         </h3>
-        <div v-if="service.txt.length" class="overflow-hidden rounded-lg border border-default bg-muted/50">
+        <div v-if="service.txt.length" class="grid grid-cols-[minmax(3rem,max-content)_minmax(0,1fr)] overflow-hidden rounded-lg border border-default bg-muted/50">
           <div
             v-for="(item, index) in service.txt"
             :key="`${item.key}-${index}`"
-            class="grid grid-cols-[minmax(5rem,auto)_minmax(0,1fr)] items-baseline gap-3 border-b border-default px-3 py-1.5 font-mono text-xs last:border-b-0"
+            class="col-span-2 grid grid-cols-subgrid items-baseline gap-3 border-b border-default px-3 py-1.5 font-mono text-xs last:border-b-0"
           >
-            <span class="text-primary">{{ item.key }}</span>
+            <span class="max-w-32 wrap-anywhere text-primary selectable">{{ item.key }}</span>
             <span v-if="item.value === null" class="text-dimmed italic">flag</span>
-            <CopyValue v-else :value="item.value" :label="item.key" class="text-default">
+            <CopyValue v-else :value="item.value" :label="item.key" wrap class="text-default">
               {{ item.value || '""' }}
               <UBadge v-if="item.binary" label="hex" size="sm" color="warning" variant="soft" class="ms-1" />
             </CopyValue>
@@ -194,6 +194,7 @@ function formatDate(timestamp: number) {
             :key="sibling.service.id"
             :icon="sibling.info.icon"
             :label="sibling.info.label"
+            class="max-w-full"
             size="xs"
             color="neutral"
             variant="outline"
@@ -207,27 +208,27 @@ function formatDate(timestamp: number) {
           Activity
         </h3>
         <dl class="grid grid-cols-3 gap-2 text-sm">
-          <div class="rounded-lg border border-default px-3 py-2">
-            <dt class="text-xs text-muted">
+          <div class="min-w-0 rounded-lg border border-default px-3 py-2">
+            <dt class="truncate text-xs text-muted">
               First seen
             </dt>
-            <dd class="font-mono text-highlighted" :title="formatDate(service.firstSeen)">
+            <dd class="truncate font-mono text-highlighted" :title="formatDate(service.firstSeen)">
               {{ relativeTime(service.firstSeen, now.getTime()) }}
             </dd>
           </div>
-          <div class="rounded-lg border border-default px-3 py-2">
-            <dt class="text-xs text-muted">
+          <div class="min-w-0 rounded-lg border border-default px-3 py-2">
+            <dt class="truncate text-xs text-muted">
               {{ service.online ? 'Last update' : 'Went offline' }}
             </dt>
-            <dd class="font-mono text-highlighted" :title="formatDate(service.lastSeen)">
+            <dd class="truncate font-mono text-highlighted" :title="formatDate(service.lastSeen)">
               {{ relativeTime(service.lastSeen, now.getTime()) }}
             </dd>
           </div>
-          <div class="rounded-lg border border-default px-3 py-2">
-            <dt class="text-xs text-muted">
+          <div class="min-w-0 rounded-lg border border-default px-3 py-2">
+            <dt class="truncate text-xs text-muted">
               Updates
             </dt>
-            <dd class="font-mono text-highlighted">
+            <dd class="truncate font-mono text-highlighted">
               {{ service.updates }}
             </dd>
           </div>

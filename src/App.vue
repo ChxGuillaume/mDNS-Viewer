@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { GroupBy, ViewMode } from '@/composables/useServiceBrowser';
 import { defineShortcuts } from '@nuxt/ui/composables';
+import { useLocalStorage, useWindowSize } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
 import AppSidebar from '@/components/AppSidebar.vue';
+import ResizeSeparator from '@/components/ResizeSeparator.vue';
 import ScanRadar from '@/components/ScanRadar.vue';
 import ServiceCard from '@/components/ServiceCard.vue';
 import ServiceDetails from '@/components/ServiceDetails.vue';
@@ -31,6 +33,13 @@ const {
 } = useServiceBrowser();
 
 const searchInput = useTemplateRef('searchInput');
+
+const DETAILS_MIN = 320;
+const DETAILS_DEFAULT = 400;
+const detailsWidth = useLocalStorage('mdns:details-width', DETAILS_DEFAULT);
+const { width: windowWidth } = useWindowSize();
+const detailsMax = computed(() => Math.max(DETAILS_MIN, Math.min(760, windowWidth.value - 560)));
+const detailsSize = computed(() => Math.min(detailsMax.value, Math.max(DETAILS_MIN, detailsWidth.value)));
 
 const title = computed(() => category.value === 'all' ? 'All services' : categories[category.value].label);
 
@@ -85,6 +94,7 @@ defineShortcuts({
         <template #header>
           <UDashboardNavbar
             data-tauri-drag-region
+            :toggle="false"
             :ui="{ root: 'bg-default/80 backdrop-blur-md', title: 'pointer-events-none' }"
           >
             <template #title>
@@ -224,10 +234,20 @@ defineShortcuts({
         </template>
       </UDashboardPanel>
 
+      <ResizeSeparator
+        v-if="selected"
+        :model-value="detailsSize"
+        :min="DETAILS_MIN"
+        :max="detailsMax"
+        :default-size="DETAILS_DEFAULT"
+        label="Resize details panel"
+        @update:model-value="detailsWidth = $event"
+      />
       <UDashboardPanel
         v-if="selected"
         id="details"
-        :ui="{ root: 'flex-none w-[25rem] max-w-[45vw] border-s border-default bg-default', body: 'p-0 sm:p-0 gap-0' }"
+        :style="{ width: `${detailsSize}px` }"
+        :ui="{ root: 'flex-none bg-default', body: 'p-0 sm:p-0 gap-0' }"
       >
         <template #body>
           <ServiceDetails :entry="selected" @select="selectedId = $event">
