@@ -14,7 +14,7 @@ export default defineConfig({
       router: false,
       autoImport: { dts: 'src/auto-imports.d.ts' },
       components: { dts: 'src/components.d.ts' },
-      icon: { clientBundle: { scan: true } },
+      icon: { clientBundle: { scan: { globInclude: ['src/**/*.{vue,ts}'] } } },
       ui: {
         colors: {
           primary: 'indigo',
