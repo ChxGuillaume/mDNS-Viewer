@@ -11,6 +11,7 @@ import ServiceCard from '@/components/ServiceCard.vue';
 import ServiceDetails from '@/components/ServiceDetails.vue';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 import ServiceRow from '@/components/ServiceRow.vue';
+import { useArrowNavigation } from '@/composables/useArrowNavigation';
 import { useServiceBrowser } from '@/composables/useServiceBrowser';
 import { useTitlebarInset } from '@/composables/useTitlebarInset';
 import { categories } from '@/lib/catalog';
@@ -61,6 +62,14 @@ const viewItems: { value: ViewMode; icon: string; label: string }[] = [
 
 const isEmpty = computed(() => stats.value.total === 0);
 const noMatches = computed(() => !isEmpty.value && filteredEntries.value.length === 0);
+
+useArrowNavigation({
+  view,
+  selectedId,
+  onSelect: (id) => {
+    selectedId.value = id;
+  },
+});
 
 function toggle(id: string) {
   selectedId.value = selectedId.value === id ? undefined : id;
@@ -202,6 +211,8 @@ defineShortcuts({
                 <ServiceCard
                   v-for="entry in group.entries"
                   :key="entry.service.id"
+                  data-nav-item
+                  :data-service-id="entry.service.id"
                   :entry="entry"
                   :selected="entry.service.id === selectedId"
                   :show-host="groupBy !== 'device'"
@@ -213,6 +224,8 @@ defineShortcuts({
                 <ServiceRow
                   v-for="entry in group.entries"
                   :key="entry.service.id"
+                  data-nav-item
+                  :data-service-id="entry.service.id"
                   :entry="entry"
                   :selected="entry.service.id === selectedId"
                   @select="toggle(entry.service.id)"
