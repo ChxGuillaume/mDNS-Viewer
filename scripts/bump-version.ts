@@ -86,8 +86,8 @@ function set(text: string) {
   const escapedCrate = crate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const edits: { path: string; pattern: RegExp }[] = [
     { path: 'package.json', pattern: /^(\s*"version":\s*")([^"]*)(")/m },
-    { path: 'src-tauri/Cargo.toml', pattern: /^(\[package\]\n(?:[^[\n].*\n|\n)*?version = ")([^"]*)(")/m },
-    { path: 'src-tauri/Cargo.lock', pattern: new RegExp(`^(name = "${escapedCrate}"\\nversion = ")([^"]*)(")`, 'm') },
+    { path: 'src-tauri/Cargo.toml', pattern: /^(\[package\]\r?\n(?:[^[\r\n].*\r?\n|\r?\n)*?version = ")([^"]*)(")/m },
+    { path: 'src-tauri/Cargo.lock', pattern: new RegExp(`^(name = "${escapedCrate}"\\r?\\nversion = ")([^"]*)(")`, 'm') },
   ];
   const updates = edits.map(({ path, pattern }) => {
     const content = read(path);

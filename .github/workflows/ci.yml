@@ -57,6 +57,7 @@ jobs:
         with:
           rust-targets: ${{ matrix.rust-targets }}
           cache-key: ${{ matrix.platform }}
+          version: 0.0.0
 
       - name: Build
         uses: tauri-apps/tauri-action@v1
