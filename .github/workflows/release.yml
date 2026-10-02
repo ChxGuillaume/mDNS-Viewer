@@ -1,4 +1,4 @@
-name: Release
+name: 🚀 Release installers on GitHub
 
 on:
   push:

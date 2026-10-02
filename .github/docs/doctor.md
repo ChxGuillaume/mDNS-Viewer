@@ -15,7 +15,7 @@ Needs `jq`, and `actionlint` (`brew install actionlint jq`).
 
 ## In GitHub Actions: `doctor.yml`
 
-Runs every Monday and from _Actions → Workflow doctor → Run workflow_. Each job writes a table to the run summary. A scheduled run that fails sends GitHub's usual failure email, which is how you hear about something expiring.
+Runs every Monday and from _Actions → 🩺 Check workflow secrets and credentials → Run workflow_. Each job writes a table to the run summary. A scheduled run that fails sends GitHub's usual failure email, which is how you hear about something expiring.
 
 | Job                 | Runs when                | Checks                                                                                                                                                                                                                                                                                |
 | ------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

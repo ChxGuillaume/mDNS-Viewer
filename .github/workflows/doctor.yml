@@ -1,4 +1,4 @@
-name: Workflow doctor
+name: 🩺 Check workflow secrets and credentials
 
 on:
   workflow_dispatch:

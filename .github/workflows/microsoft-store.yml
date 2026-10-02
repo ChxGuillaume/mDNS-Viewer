@@ -1,4 +1,4 @@
-name: Microsoft Store
+name: 🪟 Submit to the Microsoft Store
 
 on:
   workflow_call:

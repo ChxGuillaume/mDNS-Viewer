@@ -67,4 +67,4 @@ To find the exact identity names, run `security find-identity -v` on your Mac af
 
 ## Running it manually
 
-The workflow also has a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed upload without cutting a new release: _Actions → Mac App Store → Run workflow_, then enter an existing tag such as `v2.1.0`. App Store Connect rejects a version it already has, so this only helps when the earlier upload didn't go through.
+The workflow also has a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed upload without cutting a new release: _Actions → 🍎 Submit to the Mac App Store → Run workflow_, then enter an existing tag such as `v2.1.0`. App Store Connect rejects a version it already has, so this only helps when the earlier upload didn't go through.

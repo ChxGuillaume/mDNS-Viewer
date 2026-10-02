@@ -24,7 +24,7 @@ The package is **not signed**, and it doesn't need to be. The Store re-signs MSI
 
    The package is rejected if these don't match exactly.
 
-4. **First submission by hand**: Microsoft's API can only update an app that's already published. Set the `MSIX_*` variables, run _Actions → Microsoft Store → Run workflow_ with a tag and **publish** unticked, download the `msix-store` artifact from the run, then create the first submission in Partner Center with it. Fill in the listing, screenshots, pricing and age rating. The package declares `runFullTrust`, which is normal for desktop apps. Partner Center asks you to justify it; something like "desktop app that needs direct access to the local network for mDNS discovery" is enough.
+4. **First submission by hand**: Microsoft's API can only update an app that's already published. Set the `MSIX_*` variables, run _Actions → 🪟 Submit to the Microsoft Store → Run workflow_ with a tag and **publish** unticked, download the `msix-store` artifact from the run, then create the first submission in Partner Center with it. Fill in the listing, screenshots, pricing and age rating. The package declares `runFullTrust`, which is normal for desktop apps. Partner Center asks you to justify it; something like "desktop app that needs direct access to the local network for mDNS discovery" is enough.
 5. **API access**:
    - In Partner Center → _Account settings → User management → Microsoft Entra applications_, link or create an Entra ID app and give it the **Manager** role.
    - In Azure Portal → _App registrations → that app → Certificates & secrets_, create a **client secret**.
@@ -74,7 +74,7 @@ The manifest:
 
 ## Running it manually
 
-The workflow also has a `workflow_dispatch` trigger with a `tag` input and a **publish** checkbox. Use it to retry a failed submission without cutting a new release: _Actions → Microsoft Store → Run workflow_, then enter an existing tag such as `v2.1.0`. Untick **publish** to only build the MSIX artifact.
+The workflow also has a `workflow_dispatch` trigger with a `tag` input and a **publish** checkbox. Use it to retry a failed submission without cutting a new release: _Actions → 🪟 Submit to the Microsoft Store → Run workflow_, then enter an existing tag such as `v2.1.0`. Untick **publish** to only build the MSIX artifact.
 
 ## Testing the MSIX locally
 
