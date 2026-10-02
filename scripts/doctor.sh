@@ -65,18 +65,16 @@ if [ "$(jq -r .version src-tauri/tauri.conf.json)" = "../package.json" ]; then
 else
   fail "tauri.conf.json version should be \"../package.json\", the release workflow relies on it"
 fi
-if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  pass "version $version is a plain X.Y.Z, as the stores require"
+if [ "$version" = "0.0.0" ]; then
+  pass "package.json has the 0.0.0 placeholder, CI sets the real version from the tag"
 else
-  warn "version $version isn't a plain X.Y.Z, the store workflows will skip or reject it"
+  warn "package.json version is $version, keep it at 0.0.0: CI sets the version from the release tag"
 fi
-for tag in $(git tag --points-at HEAD --list 'v*'); do
-  if [ "$tag" = "v$version" ]; then
-    pass "tag $tag on HEAD matches package.json"
-  else
-    fail "tag $tag on HEAD doesn't match package.json version $version, release.yml will refuse it"
-  fi
-done
+if [ -f scripts/bump-version.ts ] && grep -qF 'bump-version.ts --set' .github/actions/setup/action.yml; then
+  pass "actions/setup sets the version from its version input"
+else
+  fail "actions/setup no longer runs scripts/bump-version.ts --set, builds would ship version $version"
+fi
 
 section "Files"
 identifier=$(jq -r .identifier src-tauri/tauri.conf.json)

@@ -16,20 +16,21 @@ jobs:
       env: ${{ steps.build-env.outputs.env }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Determine build environment
         id: build-env
         uses: ./.github/actions/determine-build-env
 
-      - name: Check tag matches app version
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Check release tag
         env:
           TAG: ${{ github.ref_name }}
-        run: |
-          VERSION="$(jq -r .version package.json)"
-          if [ "v$VERSION" != "$TAG" ]; then
-            echo "::error::Tag $TAG does not match package.json version $VERSION"
-            exit 1
-          fi
+        run: bun scripts/bump-version.ts --check "$TAG"
 
       - name: Create draft GitHub release
         id: release
@@ -84,6 +85,7 @@ jobs:
         with:
           rust-targets: ${{ matrix.rust-targets }}
           cache-key: ${{ matrix.platform }}
+          version: ${{ github.ref_name }}
 
       # Tauri treats an empty APPLE_* variable as set, so only export the ones that have a value
       - name: Load Apple signing secrets

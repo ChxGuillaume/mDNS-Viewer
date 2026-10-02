@@ -9,6 +9,10 @@ inputs:
     description: Rust cache key suffix
     required: false
     default: ''
+  version:
+    description: App version to build, e.g. a release tag like v2.1.0 (empty keeps the 0.0.0 placeholder)
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -38,3 +42,10 @@ runs:
     - name: Install frontend dependencies
       shell: bash
       run: bun install --frozen-lockfile
+
+    - name: Set app version
+      if: inputs.version != ''
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: bun scripts/bump-version.ts --set "$VERSION"

@@ -5,7 +5,7 @@
 Tauri's bundler can't produce MSIX (it only makes `msi` and `nsis` on Windows), so the workflow builds the package itself:
 
 1. `bun run tauri build --no-bundle` compiles `mDNS Viewer.exe` without making any installers.
-2. The `package-msix` action puts together a folder with the `.exe` (renamed `mdns-viewer.exe`), the Store logos from `src-tauri/icons/` and `AppxManifest.xml`. It fills the manifest template with the version from `package.json` (as `X.Y.Z.0`) and the package identity from the `MSIX_*` variables, then runs `MakeAppx.exe pack`. The Windows SDK is already on `windows-latest`.
+2. The `package-msix` action puts together a folder with the `.exe` (renamed `mdns-viewer.exe`), the Store logos from `src-tauri/icons/` and `AppxManifest.xml`. It fills the manifest template with the version from `package.json` (as `X.Y.Z.0`), which `actions/setup` set from the tag, and the package identity from the `MSIX_*` variables, then runs `MakeAppx.exe pack`. The Windows SDK is already on `windows-latest`.
 3. Attaches the `.msix` to the workflow run as the `msix-store` artifact.
 4. Authenticates `msstore` with an Entra ID app registration.
 5. `msstore publish <file>.msix -id <product id>` uploads the package, creates a submission and commits it. Microsoft then certifies it.

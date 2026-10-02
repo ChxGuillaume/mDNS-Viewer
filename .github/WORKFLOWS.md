@@ -12,7 +12,8 @@ GitHub Actions setup for building mDNS Viewer and publishing it to GitHub Releas
 | [`workflows/microsoft-store.yml`](docs/microsoft-store.md) | called by `release.yml`, or manual | Builds an MSIX package and uploads it to Partner Center |
 | [`workflows/doctor.yml`](docs/doctor.md) | weekly (Monday 06:00 UTC), manual | Checks that the secrets, certificates and credentials the workflows use are valid |
 | [`scripts/doctor.sh`](docs/doctor.md) | `bun run doctor` | Checks the repository files and versions the workflows rely on, and which secrets and variables are set |
-| `actions/setup` | composite action | Linux system deps, Bun, Rust (+ targets), Rust cache, `bun install` |
+| [`scripts/bump-version.ts`](docs/releasing.md) | `bun run bump`, CI | Prints the next release tag. In CI it also checks the tag and writes its version into the files before building |
+| `actions/setup` | composite action | Linux system deps, Bun, Rust (+ targets), Rust cache, `bun install`, and the app version when one is given |
 | `actions/determine-build-env` | composite action | Outputs `canary` if the tag contains `-canary`, otherwise `stable` |
 | `actions/package-msix` | composite action | Wraps the compiled Windows `.exe` into an `.msix` with the Windows SDK's `MakeAppx` |
 | `actions/import-apple-certs` | composite action | Creates a temporary keychain and imports base64 `.p12` certificates into it |

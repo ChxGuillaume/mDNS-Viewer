@@ -1,7 +1,7 @@
 {
   "name": "mdns-viewer",
   "type": "module",
-  "version": "2.0.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Discover and inspect mDNS / DNS-SD services on your local network",
   "license": "GPL-3.0-only",
@@ -15,7 +15,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "doctor": "bash scripts/doctor.sh"
+    "doctor": "bash scripts/doctor.sh",
+    "bump": "bun scripts/bump-version.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

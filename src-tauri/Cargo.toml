@@ -1,6 +1,6 @@
 [package]
 name = "mdns-viewer"
-version = "2.0.0"
+version = "0.0.0"
 description = "Discover and inspect mDNS / DNS-SD services on your local network"
 authors = ["Guillaume Chx"]
 license = "GPL-3.0-only"

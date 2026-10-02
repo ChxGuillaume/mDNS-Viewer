@@ -44,6 +44,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           cache-key: microsoft-store
+          version: ${{ inputs.tag }}
 
       - name: Build executable
         run: bun run tauri build --no-bundle

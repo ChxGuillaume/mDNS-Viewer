@@ -7,7 +7,7 @@ Checks that the release and store workflows will work, before you push a tag. Ev
 Needs `jq`, and `actionlint` (`brew install actionlint jq`).
 
 - **Tooling**: `actionlint` over all workflows and actions.
-- **Versions**: `package.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock` have the same version. `tauri.conf.json` still reads its version from `package.json`. The version is a plain `X.Y.Z`, and a `v*` tag on `HEAD` matches it.
+- **Versions**: `package.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock` have the same version. `tauri.conf.json` still reads its version from `package.json`. The version is the `0.0.0` placeholder, and `actions/setup` still sets the real one from the tag.
 - **Files**: the `__TEAM_ID__` placeholders are still in `Entitlements.appstore.plist`, `embedded.provisionprofile` isn't committed, `tauri.appstore.conf.json` is valid, `AppxManifest.xml` has its `{{…}}` placeholders, and the MSIX logos exist.
 - **Secrets and variables** (when `gh` is logged in with admin access to the repository): the release signing secrets are all set or none are. For each store whose `*_ENABLED` variable is `true`, every secret and variable it needs is set.
 

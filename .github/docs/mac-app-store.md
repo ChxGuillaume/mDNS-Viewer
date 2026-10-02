@@ -53,7 +53,7 @@ To find the exact identity names, run `security find-identity -v` on your Mac af
 
 ## Things to know
 
-- **Build numbers must increase.** App Store Connect rejects an upload whose version already exists, so each store upload needs a new `package.json` version. To re-run a tag that has already been uploaded, you have to bump the version.
+- **Build numbers must increase.** App Store Connect rejects an upload whose version already exists, so each store upload needs a new tag. To re-run a tag that has already been uploaded, you have to tag a new version.
 - **Test the sandboxed build before the first submission.** mDNS discovery uses raw multicast sockets. The network client and server entitlements should allow this, but check it on a real machine (macOS asks for Local Network permission on first launch).
 - **`altool`**: the upload uses `xcrun altool --upload-app`, as in Tauri's docs. If Apple removes it from Xcode on the runner, switch this step to Transporter (`xcrun iTMSTransporter`).
 - **Local App Store build**, to test signing/sandboxing:

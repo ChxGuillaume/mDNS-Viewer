@@ -1,17 +1,32 @@
 # Releasing (`release.yml`)
 
-Push a tag that starts with `v`, matching the version in `package.json` (Tauri reads the version from there):
+The release version comes from the tag. Push a tag such as `v2.1.0` and that's the version that gets built:
 
 ```sh
-# bump "version" in package.json (and src-tauri/Cargo.toml), commit, then:
 git tag v2.1.0
 git push origin v2.1.0
 ```
 
+The repository itself always says `0.0.0`. That's a placeholder for local and CI builds. Every release and store build runs `bun scripts/bump-version.ts --set <tag>` before building, through the `version` input of `actions/setup`. That command writes the tag's version into `package.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`. Don't commit a real version.
+
+Tags must be `vX.Y.Z` or `vX.Y.Z-canary.N`, and higher than every existing `v*` tag, because the stores reject versions that don't go up. A canary counts as lower than its release: `v2.1.0-canary.3` < `v2.1.0`.
+
+To work out the next tag, run `bun run bump`. It reads the latest `v*` tag and prints the next one along with the commands to push it. It doesn't change any files.
+
+| Argument | After `v2.0.3` | After `v2.1.0-canary.2` |
+| --- | --- | --- |
+| `patch` | `v2.0.4` | `v2.1.0` (releases the canary) |
+| `minor` | `v2.1.0` | `v2.1.0` (releases the canary) |
+| `major` | `v3.0.0` | `v3.0.0` |
+| `canary` | `v2.0.4-canary.1` | `v2.1.0-canary.3` |
+| `X.Y.Z` or `X.Y.Z-canary.N` | that version | that version |
+
+With no `v*` tags yet, it counts from `0.0.0`, so name the first version yourself, e.g. `bun run bump 2.0.0`. It refuses a version that isn't higher than the latest tag. `--force` overrides that.
+
 Jobs:
 
-1. **create-release**: fails if the tag doesn't match `package.json` (`v` + version), because Tauri names the files after the version in `package.json`. It then creates a **draft** release for the tag with auto-generated notes, or reuses the existing one on a re-run. Tags containing `-canary` (e.g. `v2.1.0-canary.1`) are marked as prereleases.
-2. **build**: one job per target. Each uploads its bundles to the release:
+1. **create-release**: fails unless the tag is a valid version higher than every other `v*` tag (`bump-version.ts --check`). It then creates a **draft** release for the tag with auto-generated notes, or reuses the existing one on a re-run. Tags containing `-canary` (e.g. `v2.1.0-canary.1`) are marked as prereleases.
+2. **build**: one job per target. Each sets the version from the tag, then uploads its bundles to the release:
 
    | Runner | Target |
    | --- | --- |

@@ -50,6 +50,7 @@ jobs:
         with:
           rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           cache-key: mac-app-store
+          version: ${{ inputs.tag }}
 
       - name: Import signing certificates
         uses: ./.github/actions/import-apple-certs
