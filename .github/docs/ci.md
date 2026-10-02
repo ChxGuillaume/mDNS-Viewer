@@ -5,12 +5,12 @@ Runs on every PR and every push to `main`. Concurrent runs on the same ref cance
 1. **check** (Ubuntu): `bun run lint` and `bun run typecheck`.
 2. **build** (after check passes):
 
-   | Runner | Output |
-   | --- | --- |
-   | `macos-latest` | universal `.app` / `.dmg` (Apple Silicon + Intel) |
-   | `windows-latest` | NSIS `.exe`, `.msi` and an unsigned `.msix` (x64) |
-   | `ubuntu-22.04` | `.deb`, `.rpm`, `.AppImage` (x64) |
-   | `ubuntu-22.04-arm` | `.deb`, `.rpm`, `.AppImage` (arm64) |
+   | Runner             | Output                                            |
+   | ------------------ | ------------------------------------------------- |
+   | `macos-latest`     | universal `.app` / `.dmg` (Apple Silicon + Intel) |
+   | `windows-latest`   | NSIS `.exe`, `.msi` and an unsigned `.msix` (x64) |
+   | `ubuntu-22.04`     | `.deb`, `.rpm`, `.AppImage` (x64)                 |
+   | `ubuntu-22.04-arm` | `.deb`, `.rpm`, `.AppImage` (arm64)               |
 
    The bundles are attached to the run as workflow artifacts. CI builds aren't signed.
 

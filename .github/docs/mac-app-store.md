@@ -14,30 +14,31 @@ After the upload, the build shows up in App Store Connect → TestFlight after p
 
 Requires a paid [Apple Developer Program](https://developer.apple.com/programs/) membership.
 
-1. **App ID**: in *Certificates, Identifiers & Profiles → Identifiers*, register an explicit App ID for `dev.guillaumechx.mdns-viewer` (platform macOS).
-2. **Certificates**: in *Certificates*, create both of these (each needs a CSR from Keychain Access → Certificate Assistant):
+1. **App ID**: in _Certificates, Identifiers & Profiles → Identifiers_, register an explicit App ID for `dev.guillaumechx.mdns-viewer` (platform macOS).
+2. **Certificates**: in _Certificates_, create both of these (each needs a CSR from Keychain Access → Certificate Assistant):
    - **Apple Distribution** signs the `.app`.
    - **Mac Installer Distribution** signs the `.pkg`. It shows up in Keychain as `3rd Party Mac Developer Installer: …`.
 
    Install both, then in Keychain Access select the two certificates with their private keys and export them together as one `.p12`. Alternatively, export them as two separate `.p12` files with the same password.
-3. **Provisioning profile**: in *Profiles*, create a **Mac App Store Connect** profile (Distribution → Mac App Store) for the App ID and the Apple Distribution certificate. Download it.
-4. **App record**: in [App Store Connect](https://appstoreconnect.apple.com) → *Apps → +*, create a macOS app with that bundle ID. Fill in the listing, screenshots, privacy details, pricing, etc.
-5. **API key**: in App Store Connect → *Users and Access → Integrations → App Store Connect API*, create a key with the **App Manager** role. Download the `.p8` (you can only download it once). Note the **Key ID** and the **Issuer ID**.
+
+3. **Provisioning profile**: in _Profiles_, create a **Mac App Store Connect** profile (Distribution → Mac App Store) for the App ID and the Apple Distribution certificate. Download it.
+4. **App record**: in [App Store Connect](https://appstoreconnect.apple.com) → _Apps → +_, create a macOS app with that bundle ID. Fill in the listing, screenshots, privacy details, pricing, etc.
+5. **API key**: in App Store Connect → _Users and Access → Integrations → App Store Connect API_, create a key with the **App Manager** role. Download the `.p8` (you can only download it once). Note the **Key ID** and the **Issuer ID**.
 
 ## Secrets
 
-| Secret | Value |
-| --- | --- |
-| `APPLE_TEAM_ID` | 10-character Team ID (shared with the release builds) |
-| `APPSTORE_APP_CERTIFICATE` | `base64 -i apple-distribution.p12` |
-| `APPSTORE_INSTALLER_CERTIFICATE` | `base64 -i mac-installer-distribution.p12` (can be the same combined `.p12`) |
-| `APPSTORE_CERTIFICATE_PASSWORD` | password of the `.p12` file(s). Both must use the same one |
-| `APPSTORE_APP_SIGNING_IDENTITY` | e.g. `Apple Distribution: Guillaume Chx (TEAMID)` |
-| `APPSTORE_INSTALLER_SIGNING_IDENTITY` | e.g. `3rd Party Mac Developer Installer: Guillaume Chx (TEAMID)` |
-| `APPSTORE_PROVISIONING_PROFILE` | `base64 -i mDNS_Viewer_App_Store.provisionprofile` |
-| `APPLE_API_KEY_ID` | App Store Connect API Key ID |
-| `APPLE_API_ISSUER` | App Store Connect Issuer ID (UUID) |
-| `APPLE_API_KEY` | full contents of the `AuthKey_XXXX.p8` file, including the `BEGIN`/`END` lines |
+| Secret                                | Value                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| `APPLE_TEAM_ID`                       | 10-character Team ID (shared with the release builds)                          |
+| `APPSTORE_APP_CERTIFICATE`            | `base64 -i apple-distribution.p12`                                             |
+| `APPSTORE_INSTALLER_CERTIFICATE`      | `base64 -i mac-installer-distribution.p12` (can be the same combined `.p12`)   |
+| `APPSTORE_CERTIFICATE_PASSWORD`       | password of the `.p12` file(s). Both must use the same one                     |
+| `APPSTORE_APP_SIGNING_IDENTITY`       | e.g. `Apple Distribution: Guillaume Chx (TEAMID)`                              |
+| `APPSTORE_INSTALLER_SIGNING_IDENTITY` | e.g. `3rd Party Mac Developer Installer: Guillaume Chx (TEAMID)`               |
+| `APPSTORE_PROVISIONING_PROFILE`       | `base64 -i mDNS_Viewer_App_Store.provisionprofile`                             |
+| `APPLE_API_KEY_ID`                    | App Store Connect API Key ID                                                   |
+| `APPLE_API_ISSUER`                    | App Store Connect Issuer ID (UUID)                                             |
+| `APPLE_API_KEY`                       | full contents of the `AuthKey_XXXX.p8` file, including the `BEGIN`/`END` lines |
 
 Variable: `APP_STORE_ENABLED=true`.
 
@@ -45,11 +46,11 @@ To find the exact identity names, run `security find-identity -v` on your Mac af
 
 ## Related files
 
-| File | Purpose |
-| --- | --- |
-| `src-tauri/tauri.appstore.conf.json` | Config overlay for App Store builds (entitlements, embedded profile, minimum macOS 11.0) |
-| `src-tauri/Entitlements.appstore.plist` | App Sandbox + outgoing and incoming network access (mDNS listens on UDP 5353); the `__TEAM_ID__` placeholder is filled in by CI |
-| `src-tauri/Info.plist` | Merged into **every** macOS build: declares no non-exempt encryption (App Store Connect export compliance) and the Local Network permission message |
+| File                                    | Purpose                                                                                                                                             |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src-tauri/tauri.appstore.conf.json`    | Config overlay for App Store builds (entitlements, embedded profile, minimum macOS 11.0)                                                            |
+| `src-tauri/Entitlements.appstore.plist` | App Sandbox + outgoing and incoming network access (mDNS listens on UDP 5353); the `__TEAM_ID__` placeholder is filled in by CI                     |
+| `src-tauri/Info.plist`                  | Merged into **every** macOS build: declares no non-exempt encryption (App Store Connect export compliance) and the Local Network permission message |
 
 ## Things to know
 
@@ -64,7 +65,6 @@ To find the exact identity names, run `security find-identity -v` on your Mac af
 
   This needs `src-tauri/embedded.provisionprofile` and the `__TEAM_ID__` placeholders replaced. Don't commit either.
 
+## Running it manually
 
-# Running it manually
-
-The workflow also has a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed upload without cutting a new release: *Actions → Mac App Store → Run workflow*, then enter an existing tag such as `v2.1.0`. App Store Connect rejects a version it already has, so this only helps when the earlier upload didn't go through.
+The workflow also has a `workflow_dispatch` trigger with a `tag` input. Use it to retry a failed upload without cutting a new release: _Actions → Mac App Store → Run workflow_, then enter an existing tag such as `v2.1.0`. App Store Connect rejects a version it already has, so this only helps when the earlier upload didn't go through.

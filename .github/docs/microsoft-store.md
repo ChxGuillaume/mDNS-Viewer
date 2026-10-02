@@ -15,47 +15,49 @@ The package is **not signed**, and it doesn't need to be. The Store re-signs MSI
 ## One-time setup (Microsoft side)
 
 1. **Developer account**: [register](https://learn.microsoft.com/windows/apps/get-started/sign-up) in Partner Center (individual accounts are free).
-2. **Reserve the app**: in *Partner Center → Apps and games → New product*, choose **MSIX or PWA app** (not "MSI or EXE app") and reserve the name.
-3. **Copy the identity values**: in *Product management → Product identity*, copy these:
+2. **Reserve the app**: in _Partner Center → Apps and games → New product_, choose **MSIX or PWA app** (not "MSI or EXE app") and reserve the name.
+3. **Copy the identity values**: in _Product management → Product identity_, copy these:
    - **Store ID**, e.g. `9NXXXXXXXXXX`, as the `MS_STORE_PRODUCT_ID` secret
    - **Package/Identity/Name** as the `MSIX_IDENTITY_NAME` variable
    - **Package/Identity/Publisher** (`CN=…`) as `MSIX_PUBLISHER`
    - **Package/Properties/PublisherDisplayName** as `MSIX_PUBLISHER_DISPLAY_NAME`
 
    The package is rejected if these don't match exactly.
-4. **First submission by hand**: Microsoft's API can only update an app that's already published. Set the `MSIX_*` variables, run *Actions → Microsoft Store → Run workflow* with a tag and **publish** unticked, download the `msix-store` artifact from the run, then create the first submission in Partner Center with it. Fill in the listing, screenshots, pricing and age rating. The package declares `runFullTrust`, which is normal for desktop apps. Partner Center asks you to justify it; something like "desktop app that needs direct access to the local network for mDNS discovery" is enough.
+
+4. **First submission by hand**: Microsoft's API can only update an app that's already published. Set the `MSIX_*` variables, run _Actions → Microsoft Store → Run workflow_ with a tag and **publish** unticked, download the `msix-store` artifact from the run, then create the first submission in Partner Center with it. Fill in the listing, screenshots, pricing and age rating. The package declares `runFullTrust`, which is normal for desktop apps. Partner Center asks you to justify it; something like "desktop app that needs direct access to the local network for mDNS discovery" is enough.
 5. **API access**:
-   - In Partner Center → *Account settings → User management → Microsoft Entra applications*, link or create an Entra ID app and give it the **Manager** role.
-   - In Azure Portal → *App registrations → that app → Certificates & secrets*, create a **client secret**.
-   - Note the **Tenant ID** and **Client ID** (Overview). Note the **Seller ID** (Partner Center → *Account settings → Legal info → Developer*).
+   - In Partner Center → _Account settings → User management → Microsoft Entra applications_, link or create an Entra ID app and give it the **Manager** role.
+   - In Azure Portal → _App registrations → that app → Certificates & secrets_, create a **client secret**.
+   - Note the **Tenant ID** and **Client ID** (Overview). Note the **Seller ID** (Partner Center → _Account settings → Legal info → Developer_).
 
 ## Secrets and variables
 
-| Secret | Value |
-| --- | --- |
-| `PARTNER_CENTER_TENANT_ID` | Entra ID tenant ID |
-| `PARTNER_CENTER_SELLER_ID` | Partner Center seller ID |
-| `PARTNER_CENTER_CLIENT_ID` | Entra app (client) ID |
+| Secret                         | Value                                                               |
+| ------------------------------ | ------------------------------------------------------------------- |
+| `PARTNER_CENTER_TENANT_ID`     | Entra ID tenant ID                                                  |
+| `PARTNER_CENTER_SELLER_ID`     | Partner Center seller ID                                            |
+| `PARTNER_CENTER_CLIENT_ID`     | Entra app (client) ID                                               |
 | `PARTNER_CENTER_CLIENT_SECRET` | Entra app client secret. It expires, so note the date and rotate it |
-| `MS_STORE_PRODUCT_ID` | Store ID of the app (`9N…`) |
+| `MS_STORE_PRODUCT_ID`          | Store ID of the app (`9N…`)                                         |
 
-| Variable | Value |
-| --- | --- |
-| `MSIX_IDENTITY_NAME` | Package/Identity/Name |
-| `MSIX_PUBLISHER` | Package/Identity/Publisher (`CN=…`) |
+| Variable                      | Value                                   |
+| ----------------------------- | --------------------------------------- |
+| `MSIX_IDENTITY_NAME`          | Package/Identity/Name                   |
+| `MSIX_PUBLISHER`              | Package/Identity/Publisher (`CN=…`)     |
 | `MSIX_PUBLISHER_DISPLAY_NAME` | Package/Properties/PublisherDisplayName |
-| `MS_STORE_ENABLED` | `true` to publish on stable tags |
+| `MS_STORE_ENABLED`            | `true` to publish on stable tags        |
 
 The identity values aren't secret, which is why they're variables. They also let CI build an MSIX that matches the Store listing.
 
 ## Related files
 
-| File | Purpose |
-| --- | --- |
-| `src-tauri/msix/AppxManifest.xml` | Package manifest template. The `{{…}}` placeholders are filled in by `actions/package-msix` |
-| `src-tauri/icons/StoreLogo.png`, `Square44x44Logo.png`, `Square71x71Logo.png`, `Square150x150Logo.png` | Store and Start menu logos, generated by `tauri icon` |
+| File                                                                                                   | Purpose                                                                                     |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `src-tauri/msix/AppxManifest.xml`                                                                      | Package manifest template. The `{{…}}` placeholders are filled in by `actions/package-msix` |
+| `src-tauri/icons/StoreLogo.png`, `Square44x44Logo.png`, `Square71x71Logo.png`, `Square150x150Logo.png` | Store and Start menu logos, generated by `tauri icon`                                       |
 
 The manifest:
+
 - declares a full-trust desktop app (`runFullTrust`, `packagedClassicApp`)
 - requires Windows 10 2004 (build 19041) or later
 - adds a Windows Firewall rule allowing inbound UDP 5353, so mDNS responses aren't blocked and users don't get a firewall prompt
@@ -70,15 +72,15 @@ The manifest:
 - **Icons are basic.** The taskbar icon is shown on a coloured "plate". For the modern transparent look, add `Square44x44Logo.targetsize-*_altform-unplated.png` variants and generate a `resources.pri` with `MakePri.exe`.
 - **x64 only.** For arm64, build with `--target aarch64-pc-windows-msvc`, package a second MSIX with `ProcessorArchitecture="arm64"`, and combine both into an `.msixbundle` with `MakeAppx bundle`.
 
-# Running it manually
+## Running it manually
 
-The workflow also has a `workflow_dispatch` trigger with a `tag` input and a **publish** checkbox. Use it to retry a failed submission without cutting a new release: *Actions → Microsoft Store → Run workflow*, then enter an existing tag such as `v2.1.0`. Untick **publish** to only build the MSIX artifact.
+The workflow also has a `workflow_dispatch` trigger with a `tag` input and a **publish** checkbox. Use it to retry a failed submission without cutting a new release: _Actions → Microsoft Store → Run workflow_, then enter an existing tag such as `v2.1.0`. Untick **publish** to only build the MSIX artifact.
 
 ## Testing the MSIX locally
 
 Windows only installs signed MSIX files, so to try the package on your machine:
 
-- **Developer Mode** (*Settings → System → For developers*): extract the `.msix` (it's a zip) and run `Add-AppxPackage -Register .\AppxManifest.xml` in the extracted folder.
+- **Developer Mode** (_Settings → System → For developers_): extract the `.msix` (it's a zip) and run `Add-AppxPackage -Register .\AppxManifest.xml` in the extracted folder.
 - **Or sign a local copy** with a self-signed certificate whose subject matches the manifest's `Publisher`, then trust that certificate and double-click the `.msix`.
 
 Never ship a self-signed package. The Store build is signed by Microsoft.
