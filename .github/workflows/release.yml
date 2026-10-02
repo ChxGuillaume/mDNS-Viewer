@@ -1,0 +1,141 @@
+name: 🚀 Release installers on GitHub
+run-name: 🚀 Release ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-24.04
+    outputs:
+      release-id: ${{ steps.release.outputs.id }}
+      env: ${{ steps.build-env.outputs.env }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determine build environment
+        id: build-env
+        uses: ./.github/actions/determine-build-env
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Check release tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: bun scripts/bump-version.ts --check "$TAG"
+
+      - name: Create draft GitHub release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.build-env.outputs.env == 'canary' && 'true' || '' }}
+        run: |
+          find_release() {
+            gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == env.TAG) | .id' | head -n1
+          }
+          ID="$(find_release)"
+          if [ -z "$ID" ]; then
+            gh release create "$TAG" --draft --title "mDNS Viewer $TAG" --generate-notes --verify-tag ${PRERELEASE:+--prerelease}
+            ID="$(find_release)"
+          fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos-arm64
+            rust-targets: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - os: macos-latest
+            platform: macos-x64
+            rust-targets: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - os: windows-latest
+            platform: windows-x64
+            rust-targets: ''
+            args: ''
+          - os: ubuntu-22.04
+            platform: linux-x64
+            rust-targets: ''
+            args: ''
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+            rust-targets: ''
+            args: ''
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          rust-targets: ${{ matrix.rust-targets }}
+          cache-key: ${{ matrix.platform }}
+          version: ${{ github.ref_name }}
+
+      # Tauri treats an empty APPLE_* variable as set, so only export the ones that have a value
+      - name: Load Apple signing secrets
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -n "${!name}" ]; then
+              printf '%s<<__EOF__\n%s\n__EOF__\n' "$name" "${!name}" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Build and upload to release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release-id }}
+          tauriScript: bun run tauri
+          args: ${{ matrix.args }}
+
+  publish-release:
+    needs: [create-release, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release-id }}
+        run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
+
+  mac-app-store:
+    needs: create-release
+    if: needs.create-release.outputs.env == 'stable' && vars.APP_STORE_ENABLED == 'true'
+    uses: ./.github/workflows/mac-app-store.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+
+  microsoft-store:
+    needs: create-release
+    if: needs.create-release.outputs.env == 'stable' && vars.MS_STORE_ENABLED == 'true'
+    uses: ./.github/workflows/microsoft-store.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

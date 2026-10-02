@@ -1,0 +1,71 @@
+name: Package MSIX
+description: Wraps the compiled Windows executable into an MSIX package (version X.Y.Z.0 from package.json) using the Windows SDK's MakeAppx
+inputs:
+  identity-name:
+    description: Package/Identity/Name from Partner Center
+    required: true
+  publisher:
+    description: Package/Identity/Publisher from Partner Center (CN=...)
+    required: true
+  publisher-display-name:
+    description: Package/Properties/PublisherDisplayName from Partner Center
+    required: true
+  executable:
+    description: Path to the compiled executable
+    required: false
+    default: src-tauri/target/release/mDNS Viewer.exe
+outputs:
+  path:
+    description: Path to the generated .msix
+    value: ${{ steps.pack.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - name: Build MSIX
+      id: pack
+      shell: pwsh
+      env:
+        IDENTITY_NAME: ${{ inputs.identity-name }}
+        PUBLISHER: ${{ inputs.publisher }}
+        PUBLISHER_DISPLAY_NAME: ${{ inputs.publisher-display-name }}
+        EXECUTABLE: ${{ inputs.executable }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+        if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "MSIX needs a plain X.Y.Z version, got '$version'" }
+
+        $layout = Join-Path $env:RUNNER_TEMP 'msix-layout'
+        Remove-Item $layout -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Path (Join-Path $layout 'Assets') | Out-Null
+
+        Copy-Item $env:EXECUTABLE (Join-Path $layout 'mdns-viewer.exe')
+        foreach ($icon in 'StoreLogo', 'Square44x44Logo', 'Square71x71Logo', 'Square150x150Logo') {
+          Copy-Item "src-tauri/icons/$icon.png" (Join-Path $layout 'Assets')
+        }
+
+        $values = @{
+          VERSION                = "$version.0"
+          IDENTITY_NAME          = $env:IDENTITY_NAME
+          PUBLISHER              = $env:PUBLISHER
+          PUBLISHER_DISPLAY_NAME = $env:PUBLISHER_DISPLAY_NAME
+        }
+        foreach ($key in $values.Keys) {
+          if ([string]::IsNullOrWhiteSpace($values[$key])) { throw "Missing MSIX value for $key" }
+        }
+        $manifest = Get-Content -Raw src-tauri/msix/AppxManifest.xml
+        foreach ($key in $values.Keys) {
+          $manifest = $manifest.Replace("{{$key}}", [System.Security.SecurityElement]::Escape($values[$key]))
+        }
+        Set-Content -Path (Join-Path $layout 'AppxManifest.xml') -Value $manifest -Encoding utf8
+
+        $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" |
+          Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+          Select-Object -First 1
+        if (-not $makeappx) { throw 'makeappx.exe not found, is the Windows SDK installed?' }
+
+        $output = Join-Path $env:RUNNER_TEMP "mDNS-Viewer_$($version)_x64.msix"
+        & $makeappx.FullName pack /d $layout /p $output /o
+        if ($LASTEXITCODE -ne 0) { throw "makeappx failed with exit code $LASTEXITCODE" }
+
+        "path=$output" >> $env:GITHUB_OUTPUT

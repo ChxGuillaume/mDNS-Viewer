@@ -1,0 +1,42 @@
+name: Import Apple certificates
+description: Creates a temporary keychain and imports base64-encoded .p12 certificates into it
+inputs:
+  certificate:
+    description: Base64-encoded .p12 file
+    required: true
+  installer-certificate:
+    description: Second base64-encoded .p12 file (e.g. Mac Installer Distribution), using the same password
+    required: false
+    default: ''
+  password:
+    description: Password of the .p12 file(s)
+    required: true
+outputs:
+  keychain:
+    description: Path to the temporary keychain
+    value: ${{ steps.import.outputs.keychain }}
+runs:
+  using: composite
+  steps:
+    - name: Import certificates
+      id: import
+      shell: bash
+      env:
+        CERTIFICATE: ${{ inputs.certificate }}
+        INSTALLER_CERTIFICATE: ${{ inputs.installer-certificate }}
+        CERTIFICATE_PASSWORD: ${{ inputs.password }}
+      run: |
+        KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+        KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        for var in CERTIFICATE INSTALLER_CERTIFICATE; do
+          [ -z "${!var}" ] && continue
+          echo "${!var}" | base64 --decode > "$RUNNER_TEMP/$var.p12"
+          security import "$RUNNER_TEMP/$var.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm "$RUNNER_TEMP/$var.p12"
+        done
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+        security list-keychains -d user | xargs security list-keychains -d user -s "$KEYCHAIN"
+        echo "keychain=$KEYCHAIN" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,85 @@
+name: 🪟 Submit to the Microsoft Store
+run-name: "${{ format('🪟 {0} {1} for the Microsoft Store', inputs.publish && 'Submit' || 'Build', inputs.tag) }}"
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to build and submit (e.g. v2.1.0)
+        type: string
+        required: true
+      publish:
+        description: Upload to Partner Center (off = only build the MSIX artifact)
+        type: boolean
+        default: true
+    secrets:
+      PARTNER_CENTER_TENANT_ID:
+        required: false
+      PARTNER_CENTER_SELLER_ID:
+        required: false
+      PARTNER_CENTER_CLIENT_ID:
+        required: false
+      PARTNER_CENTER_CLIENT_SECRET:
+        required: false
+      MS_STORE_PRODUCT_ID:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and submit (e.g. v2.1.0)
+        type: string
+        required: true
+      publish:
+        description: Upload to Partner Center (off = only build the MSIX artifact)
+        type: boolean
+        default: true
+
+jobs:
+  submit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: ./.github/actions/setup
+        with:
+          cache-key: microsoft-store
+          version: ${{ inputs.tag }}
+
+      - name: Build executable
+        run: bun run tauri build --no-bundle
+
+      - name: Package MSIX
+        id: msix
+        uses: ./.github/actions/package-msix
+        with:
+          identity-name: ${{ vars.MSIX_IDENTITY_NAME }}
+          publisher: ${{ vars.MSIX_PUBLISHER }}
+          publisher-display-name: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+
+      - name: Upload MSIX artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: msix-store
+          path: ${{ steps.msix.outputs.path }}
+
+      - name: Setup Microsoft Store Developer CLI
+        if: inputs.publish
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      - name: Configure Microsoft Store Developer CLI
+        if: inputs.publish
+        run: >
+          msstore reconfigure
+          --tenantId ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          --sellerId ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          --clientId ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          --clientSecret ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+
+      - name: Publish to Microsoft Store
+        if: inputs.publish
+        env:
+          PRODUCT_ID: ${{ secrets.MS_STORE_PRODUCT_ID }}
+          MSIX_PATH: ${{ steps.msix.outputs.path }}
+        run: msstore publish "$env:MSIX_PATH" -id "$env:PRODUCT_ID"

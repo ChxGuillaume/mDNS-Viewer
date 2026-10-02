@@ -1,50 +1,49 @@
 <p align="center">
-  <img src="/resources/icons/icon.iconset/icon-128.png" width="128" alt="mDNS Viewer Logo"></img>
+  <img src="/resources/icons/logo.svg" width="128" alt="mDNS Viewer Logo"></img>
 </p>
 
 <p align="center">
-  A network visualization tool for discovering and monitoring mDNS (Multicast DNS) services on your local network.
+  A desktop app for discovering and inspecting mDNS / DNS-SD (Bonjour, Zeroconf) services on your local network.
 </p>
 
-## Overview
+## ✨ Features
 
-mDNS Viewer provides a real-time, visual interface for exploring mDNS services broadcasting on your network. Discover printers, smart home devices, media servers, and other network services using Bonjour/Zeroconf protocols.
+- 📡 **Live discovery**: service types come from the DNS-SD meta query (`_services._dns-sd._udp`), plus a built-in list of common types for devices that don't answer it
+- 🟢 **Online / offline tracking**: TTL expiry and goodbye packets mark services offline instead of silently dropping them
+- 🗂️ **Group by device or by service type**, in a grid or a dense list view
+- 🔍 **Full-text search** across names, hosts, IP addresses, ports and TXT records
+- 🧾 **Inspector panel**: addresses (IPv4/IPv6, interface, link-local), decoded TXT records, activity timestamps and the other services on the same device
+- ⚡ **Quick actions**: open web UIs (by hostname or IP), copy URLs, `ssh`/`sftp` commands and TXT records as JSON
+- 🌗 Light and dark themes, keyboard shortcuts (`⌘K` search, `⌘R` rescan, `⌘1`/`⌘2` switch views, `Esc` close/clear)
 
-## Features
+## 🚀 Getting started
 
-- 🔍 **Real-time Discovery** - Automatically detect mDNS services as they appear on your network
-- 📊 **Visual Interface** - Clean, intuitive UI for browsing discovered services
-- 🔄 **Live Updates** - Monitor services as they come online and offline
-- 📱 **Service Details** - View comprehensive information about each discovered service
-
-## What is mDNS?
-
-mDNS (Multicast DNS) is a protocol that allows devices to advertise and discover services on a local network without requiring a centralized DNS server. It's commonly used by:
-
-- Printers and scanners
-- Smart home devices (lights, thermostats, cameras)
-- Media streaming devices (Apple TV, Chromecast, AirPlay)
-- Network-attached storage (NAS)
-- Development servers and APIs
-
-## Getting Started
+Prerequisites: [Bun](https://bun.sh), Rust ≥ 1.90, and the [Tauri system dependencies](https://tauri.app/start/prerequisites/) for your OS.
 
 ```bash
-# Install dependencies
 bun install
 
-# Run the application
-bun start
+# Run the desktop app with hot reload
+bun app:dev
 
-# Development mode
-bun dev:hmr
+# Build installers for the current platform
+bun app:build
 ```
 
-## Tech Stack
+💡 `bun dev` runs only the frontend in a browser, using mock data, which is handy for UI work.
 
-Built with modern web technologies for optimal performance and developer experience.
+## 📦 Releasing
 
-## License
+Pushing a `v*` tag builds installers for macOS, Windows and Linux and publishes them to GitHub Releases, with optional Mac App Store and Microsoft Store submission. See [`.github/WORKFLOWS.md`](.github/WORKFLOWS.md) for the full setup.
+
+## 🛠️ Tech stack
+
+- 🖥️ [Tauri 2](https://tauri.app) desktop shell
+- 🦀 Rust discovery engine built on [`mdns-sd`](https://crates.io/crates/mdns-sd)
+- 💚 Vue 3, [Nuxt UI 4](https://ui.nuxt.com) and Tailwind CSS 4, built with Vite
+
+## 📄 License
+
 [![https://img.shields.io/github/license/ChxGuillaume/mDNS-Viewer?color=green&label=License](https://img.shields.io/github/license/ChxGuillaume/mDNS-Viewer?color=green&label=License)](https://www.tldrlegal.com/license/gnu-general-public-license-v3-gpl-3)
 
 [GPL-3.0 License](LICENSE)

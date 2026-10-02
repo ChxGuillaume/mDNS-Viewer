@@ -1,45 +1,49 @@
-import { resolve } from 'node:path';
+import { fileURLToPath, URL } from 'node:url';
 import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 
+const host = process.env.TAURI_DEV_HOST;
+
 export default defineConfig({
-  root: resolve(__dirname),
+  clearScreen: false,
 
   plugins: [
     vue(),
     ui({
-      autoImport: {
-        dts: resolve(__dirname, 'src/mainview/auto-imports.d.ts'),
-      },
-      components: {
-        dts: resolve(__dirname, 'src/mainview/components.d.ts'),
+      router: false,
+      autoImport: { dts: 'src/auto-imports.d.ts' },
+      components: { dts: 'src/components.d.ts' },
+      icon: { clientBundle: { scan: { globInclude: ['src/**/*.{vue,ts}'] } } },
+      ui: {
+        colors: {
+          primary: 'indigo',
+          neutral: 'zinc',
+        },
       },
     }),
   ],
 
-  build: {
-    outDir: resolve(__dirname, 'dist'),
-    emptyOutDir: true,
-
-    rollupOptions: {
-      input: resolve(__dirname, 'src/mainview/index.html'),
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@nuxt/ui'))
-              return 'nuxt-ui';
-            if (id.includes('@vue') || id.includes('vue-router'))
-              return 'vue-core';
-            return 'vendor';
-          }
-        },
-      },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 
   server: {
     port: 5173,
     strictPort: true,
+    host: host || false,
+    hmr: host ? { protocol: 'ws', host, port: 5174 } : undefined,
+    watch: { ignored: ['**/src-tauri/**'] },
+  },
+
+  envPrefix: ['VITE_', 'TAURI_ENV_*'],
+
+  build: {
+    target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome111' : 'safari16',
+    minify: process.env.TAURI_ENV_DEBUG ? false : 'oxc',
+    sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    chunkSizeWarningLimit: 1500,
   },
 });
