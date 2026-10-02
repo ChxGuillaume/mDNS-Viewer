@@ -38,16 +38,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
-          PRERELEASE: ${{ steps.build-env.outputs.env == 'canary' && 'true' || '' }}
+          PRERELEASE: ${{ steps.build-env.outputs.env == 'canary' }}
         run: |
-          find_release() {
-            gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == env.TAG) | .id' | head -n1
-          }
-          ID="$(find_release)"
+          ID="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == env.TAG) | .id' | head -n1)"
           if [ -z "$ID" ]; then
-            gh release create "$TAG" --draft --title "mDNS Viewer $TAG" --generate-notes --verify-tag ${PRERELEASE:+--prerelease}
-            ID="$(find_release)"
+            ID="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f name="mDNS Viewer $TAG" \
+              -F draft=true -F prerelease="$PRERELEASE" -F generate_release_notes=true \
+              --jq .id)"
           fi
+          if [ -z "$ID" ]; then
+            echo "::error::Couldn't create or find the release for $TAG"
+            exit 1
+          fi
+          echo "Release $ID for $TAG"
           echo "id=$ID" >> "$GITHUB_OUTPUT"
 
   build:
