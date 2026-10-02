@@ -52,24 +52,11 @@ jobs:
           cache-key: mac-app-store
 
       - name: Import signing certificates
-        env:
-          APP_CERTIFICATE: ${{ secrets.APPSTORE_APP_CERTIFICATE }}
-          INSTALLER_CERTIFICATE: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
-        run: |
-          KEYCHAIN="$RUNNER_TEMP/appstore.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          for name in APP INSTALLER; do
-            var="${name}_CERTIFICATE"
-            echo "${!var}" | base64 --decode > "$RUNNER_TEMP/$name.p12"
-            security import "$RUNNER_TEMP/$name.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-            rm "$RUNNER_TEMP/$name.p12"
-          done
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user | xargs security list-keychains -d user -s "$KEYCHAIN"
+        uses: ./.github/actions/import-apple-certs
+        with:
+          certificate: ${{ secrets.APPSTORE_APP_CERTIFICATE }}
+          installer-certificate: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE }}
+          password: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
 
       - name: Prepare App Store bundle files
         env:

@@ -14,7 +14,8 @@
     "app:build": "tauri build",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "doctor": "bash scripts/doctor.sh"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

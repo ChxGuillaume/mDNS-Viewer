@@ -1,0 +1,272 @@
+name: Workflow doctor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  repo:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) latest "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Check repository
+        run: bash scripts/doctor.sh
+
+      - name: Store status
+        env:
+          APP_STORE_ENABLED: ${{ vars.APP_STORE_ENABLED }}
+          MS_STORE_ENABLED: ${{ vars.MS_STORE_ENABLED }}
+        run: |
+          . scripts/doctor-lib.sh
+          section "Stores"
+          for name in APP_STORE_ENABLED MS_STORE_ENABLED; do
+            case ${!name} in
+              true) pass "$name is true, its job checks the credentials" ;;
+              '' | false) info "$name isn't true, that store is skipped" ;;
+              *) warn "$name is \"${!name}\", only \"true\" enables that store" ;;
+            esac
+          done
+          doctor_finish
+
+  release-signing:
+    runs-on: macos-latest
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check secrets
+        id: secrets
+        run: |
+          . scripts/doctor-lib.sh
+          present() { [ -n "${!1:-}" ]; }
+          section "Release signing"
+          if check_all_or_none "Release signing secrets" "${RELEASE_SIGNING_SECRETS[@]}"; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+          doctor_finish
+
+      - name: Import certificate
+        if: steps.secrets.outputs.configured == 'true'
+        id: certs
+        uses: ./.github/actions/import-apple-certs
+        with:
+          certificate: ${{ secrets.APPLE_CERTIFICATE }}
+          password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Check certificate and notarization
+        if: steps.secrets.outputs.configured == 'true'
+        env:
+          KEYCHAIN: ${{ steps.certs.outputs.keychain }}
+        run: |
+          . scripts/doctor-lib.sh
+          identities=$(security find-identity -v -p codesigning "$KEYCHAIN")
+          if grep -qF "\"$APPLE_SIGNING_IDENTITY\"" <<< "$identities"; then
+            pass "APPLE_SIGNING_IDENTITY is in APPLE_CERTIFICATE"
+            pem=$(security find-certificate -c "$APPLE_SIGNING_IDENTITY" -p "$KEYCHAIN")
+            check_cert_expiry "Developer ID Application certificate" "$pem"
+            subject=$(openssl x509 -noout -subject -nameopt RFC2253 <<< "$pem")
+            if grep -qF "OU=$APPLE_TEAM_ID" <<< "$subject"; then
+              pass "certificate belongs to APPLE_TEAM_ID"
+            else
+              fail "certificate doesn't belong to APPLE_TEAM_ID"
+            fi
+          else
+            fail "APPLE_SIGNING_IDENTITY isn't a valid code signing identity in APPLE_CERTIFICATE"
+            printf '%s\n' "$identities"
+          fi
+          if xcrun notarytool history --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" > /dev/null; then
+            pass "notarization credentials work (APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID)"
+          else
+            fail "notarytool rejected APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID"
+          fi
+          doctor_finish
+
+  mac-app-store:
+    if: vars.APP_STORE_ENABLED == 'true'
+    runs-on: macos-latest
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPSTORE_APP_CERTIFICATE: ${{ secrets.APPSTORE_APP_CERTIFICATE }}
+      APPSTORE_INSTALLER_CERTIFICATE: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE }}
+      APPSTORE_CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+      APPSTORE_APP_SIGNING_IDENTITY: ${{ secrets.APPSTORE_APP_SIGNING_IDENTITY }}
+      APPSTORE_INSTALLER_SIGNING_IDENTITY: ${{ secrets.APPSTORE_INSTALLER_SIGNING_IDENTITY }}
+      APPSTORE_PROVISIONING_PROFILE: ${{ secrets.APPSTORE_PROVISIONING_PROFILE }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check secrets
+        run: |
+          . scripts/doctor-lib.sh
+          present() { [ -n "${!1:-}" ]; }
+          section "Mac App Store"
+          check_all "Mac App Store secrets" "${APP_STORE_SECRETS[@]}" || true
+          doctor_finish
+
+      - name: Import certificates
+        id: certs
+        uses: ./.github/actions/import-apple-certs
+        with:
+          certificate: ${{ secrets.APPSTORE_APP_CERTIFICATE }}
+          installer-certificate: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE }}
+          password: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+
+      - name: Check certificates, profile and API key
+        env:
+          KEYCHAIN: ${{ steps.certs.outputs.keychain }}
+        run: |
+          . scripts/doctor-lib.sh
+          identifier=$(jq -r .identifier src-tauri/tauri.conf.json)
+          identities=$(security find-identity -v "$KEYCHAIN")
+
+          for name in APPSTORE_APP_SIGNING_IDENTITY APPSTORE_INSTALLER_SIGNING_IDENTITY; do
+            if grep -qF "\"${!name}\"" <<< "$identities"; then
+              pass "$name is in the imported certificates"
+              check_cert_expiry "$name certificate" "$(security find-certificate -c "${!name}" -p "$KEYCHAIN")"
+            else
+              fail "$name isn't a valid identity in the imported certificates"
+            fi
+          done
+          if [ "$DOCTOR_FAILURES" -gt 0 ]; then printf '%s\n' "$identities"; fi
+
+          profile="$RUNNER_TEMP/profile.plist"
+          if echo "$APPSTORE_PROVISIONING_PROFILE" | base64 --decode | security cms -D > "$profile" 2> /dev/null; then
+            expiration=$(plutil -extract ExpirationDate raw -o - "$profile")
+            days=$(( ($(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$expiration" +%s) - $(date +%s)) / 86400 ))
+            check_days_left "Provisioning profile" "$days" "$expiration"
+
+            team=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$profile")
+            if [ "$team" = "$APPLE_TEAM_ID" ]; then
+              pass "provisioning profile belongs to APPLE_TEAM_ID"
+            else
+              fail "provisioning profile is for team $team, not APPLE_TEAM_ID"
+            fi
+
+            app_id=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.application-identifier' "$profile")
+            if [ "$app_id" = "$APPLE_TEAM_ID.$identifier" ]; then
+              pass "provisioning profile is for $identifier"
+            else
+              fail "provisioning profile is for $app_id, expected <team>.$identifier"
+            fi
+
+            app_sha1=$(security find-certificate -c "$APPSTORE_APP_SIGNING_IDENTITY" -Z "$KEYCHAIN" | awk '/SHA-1 hash:/ { print $3 }')
+            found=''
+            i=0
+            while der=$(plutil -extract "DeveloperCertificates.$i" raw -o - "$profile" 2> /dev/null); do
+              sha1=$(base64 --decode <<< "$der" | openssl x509 -inform der -noout -fingerprint -sha1 | cut -d= -f2 | tr -d ':')
+              [ "$sha1" = "$app_sha1" ] && found=yes
+              i=$((i + 1))
+            done
+            if [ -n "$found" ]; then
+              pass "provisioning profile includes the Apple Distribution certificate"
+            else
+              fail "provisioning profile doesn't include the APPSTORE_APP_CERTIFICATE certificate, regenerate the profile"
+            fi
+          else
+            fail "APPSTORE_PROVISIONING_PROFILE isn't a valid base64 provisioning profile"
+          fi
+
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$APPLE_API_KEY" > "$key"
+          b64url() { base64 | tr -d '=\n' | tr '/+' '_-'; }
+          now=$(date +%s)
+          header=$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$APPLE_API_KEY_ID" | b64url)
+          payload=$(printf '{"iss":"%s","iat":%d,"exp":%d,"aud":"appstoreconnect-v1"}' "$APPLE_API_ISSUER" "$now" "$((now + 600))" | b64url)
+          if der=$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$key" | xxd -p | tr -d '\n') && [ -n "$der" ]; then
+            raw=$(xxd -r -p <<< "$der" | openssl asn1parse -inform DER | awk -F: '/INTEGER/ { v = $NF; while (length(v) < 64) v = "0" v; printf "%s", substr(v, length(v) - 63) }')
+            signature=$(xxd -r -p <<< "$raw" | b64url)
+            status=$(curl -sS -g -o "$RUNNER_TEMP/apps.json" -w '%{http_code}' \
+              -H "Authorization: Bearer $header.$payload.$signature" \
+              "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=$identifier&fields[apps]=bundleId")
+            case $status in
+              200)
+                pass "App Store Connect API key works"
+                if [ "$(jq '.data | length' "$RUNNER_TEMP/apps.json")" -gt 0 ]; then
+                  pass "App Store Connect has an app for $identifier"
+                else
+                  fail "App Store Connect has no app for $identifier, create the app record first"
+                fi
+                ;;
+              401) fail "App Store Connect rejected the API key (check APPLE_API_KEY_ID, APPLE_API_ISSUER, APPLE_API_KEY)" ;;
+              403) fail "the API key isn't allowed to list apps, give it the App Manager role" ;;
+              *) fail "App Store Connect API returned HTTP $status" && cat "$RUNNER_TEMP/apps.json" ;;
+            esac
+          else
+            fail "APPLE_API_KEY isn't a valid .p8 private key"
+          fi
+          rm -f "$key"
+          doctor_finish
+
+  microsoft-store:
+    if: vars.MS_STORE_ENABLED == 'true'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      PARTNER_CENTER_TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+      PARTNER_CENTER_SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+      PARTNER_CENTER_CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+      PARTNER_CENTER_CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+      MS_STORE_PRODUCT_ID: ${{ secrets.MS_STORE_PRODUCT_ID }}
+      MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+      MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+      MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check secrets and variables
+        run: |
+          . scripts/doctor-lib.sh
+          present() { [ -n "${!1:-}" ]; }
+          section "Microsoft Store"
+          check_all "Microsoft Store secrets" "${MS_STORE_SECRETS[@]}" || true
+          if check_all "MSIX variables" "${MSIX_VARIABLES[@]}" && [[ $MSIX_PUBLISHER != CN=* ]]; then
+            fail "MSIX_PUBLISHER must start with CN= (copy it from Partner Center → Product identity)"
+          fi
+          doctor_finish
+
+      - name: Setup Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      - name: Check Partner Center access
+        run: |
+          . scripts/doctor-lib.sh
+          if msstore reconfigure --tenantId "$PARTNER_CENTER_TENANT_ID" --sellerId "$PARTNER_CENTER_SELLER_ID" \
+              --clientId "$PARTNER_CENTER_CLIENT_ID" --clientSecret "$PARTNER_CENTER_CLIENT_SECRET" > /dev/null; then
+            pass "Partner Center credentials work"
+            if app=$(msstore apps get "$MS_STORE_PRODUCT_ID"); then
+              printf '%s\n' "$app"
+              pass "MS_STORE_PRODUCT_ID $MS_STORE_PRODUCT_ID exists"
+              if grep -qiF "$MSIX_IDENTITY_NAME" <<< "$app"; then
+                pass "the product's package identity matches MSIX_IDENTITY_NAME"
+              else
+                info "msstore didn't show the package identity, compare MSIX_IDENTITY_NAME with Partner Center by hand"
+              fi
+            else
+              fail "msstore couldn't find MS_STORE_PRODUCT_ID $MS_STORE_PRODUCT_ID"
+            fi
+          else
+            fail "Partner Center rejected the credentials (PARTNER_CENTER_*), the client secret may have expired"
+          fi
+          info "the client secret's expiry date isn't visible from here, check it in Azure Portal → App registrations"
+          doctor_finish
