@@ -1,4 +1,5 @@
 name: 🍎 Submit to the Mac App Store
+run-name: 🍎 Submit ${{ inputs.tag }} to the Mac App Store
 
 on:
   workflow_call:

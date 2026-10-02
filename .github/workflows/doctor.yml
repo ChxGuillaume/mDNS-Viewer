@@ -1,4 +1,5 @@
 name: 🩺 Check workflow secrets and credentials
+run-name: "${{ format('🩺 {0} check of workflow secrets and credentials', github.event_name == 'schedule' && 'Weekly' || 'Manual') }}"
 
 on:
   workflow_dispatch:

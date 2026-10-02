@@ -1,4 +1,5 @@
 name: 🪟 Submit to the Microsoft Store
+run-name: "${{ format('🪟 {0} {1} for the Microsoft Store', inputs.publish && 'Submit' || 'Build', inputs.tag) }}"
 
 on:
   workflow_call:
